@@ -1,0 +1,154 @@
+\section{Related Work}\label{s:related}
+
+\paragraph{Verified storage systems.}
+Inspired by successes in other systems verification problems~\cite{leroy:compcert,klein:sel4},
+recent work has brought the power of automated and interactive verification
+to bear on storage systems as well.
+One of the main challenges in verifying storage systems is crash consistency,
+as it combines concurrency-like nondeterminism with persistent state.
+Yggdrasil~\cite{sigurbjarnarson:yggdrasil} is a verified file system
+whose correctness theorem is a \emph{crash refinement}---%
+a simulation between a crash-free specification and the nondeterministic, crashing implementation.
+This formalization allows clients of Yggdrasil to program against a strong specification free from crashes,
+similar to our angelic crash consistency model.
+FSCQ~\cite{chen:fscq} is a verified crash-safe file system
+with specifications stated in \emph{crash Hoare logic},
+which explicitly states the recovery behavior of the system after a crash.
+DFSCQ~\cite{chen:dfscq} extends FSCQ and its verification
+with support for crash-consistency optimizations such as log-bypass writes
+and the metadata-only \texttt{fdatasync} system call.
+The \depsynth programming model separates crash consistency of these optimizations from the storage system itself,
+and so can simplify their implementation.
+
+Another approach to verified storage systems is at the language level.
+Cogent~\cite{amani:cogent} is a language for building storage systems
+with a strong type system that precludes some common systems bugs.
+A language-level approach like Cogent is complementary to \depsynth:
+Cogent provides a high-level language for implementing storage systems,
+while \depsynth provides a synthesizer for making those implementations crash consistent.
+
+\paragraph{Crash-consistency bug-finding tools.}
+Ferrite~\cite{bornholt:ferrite} is a framework for specifying \emph{crash-consistency models},
+which formally define the behavior of a storage system across crashes,
+and for automatically finding violations of such models in a storage system implementation.
+One way to specify these models is with litmus tests that demonstrate unintuitive behaviors;
+\depsynth builds on this approach by automatically synthesizing rules from such litmus tests.
+\depsynth also takes inspiration from Ferrite's synthesis tool
+for inserting \texttt{fsync} calls into litmus tests to make them crash consistent,
+but instead focuses on making the \emph{storage system itself} crash consistent
+rather than the user code running on top of it.
+CrashMonkey~\cite{mohan:crashmonkey} is a tool for finding crash-consistency bugs in Linux file systems.
+CrashMonkey exhaustively enumerates all litmus tests with a given set of system calls,
+runs them against the target file system,
+and then tests each possible crash state for consistency.
+Connecting CrashMonkey-like litmus test generation with \depsynth
+could provide developers with a comprehensive set of litmus tests for their system for free,
+lowering the burden of applying \depsynth.
+FiSC~\cite{yang:fisc} and eXplode~\cite{yang:explode}
+use model checking to find bugs in storage systems.
+
+One advantage of bug-finding tools is that they are significantly easier to apply to production systems
+than heavyweight verification tools.
+\citet{bornholt:s3} describe the use of lightweight formal methods
+to validate the crash consistency (and other properties)
+of ShardStore, a key-value store for Amazon S3.
+Their approach applies property-based testing to automatically find and minimize litmus tests
+that demonstrate crash-consistency issues.
+\depsynth takes this idea one step further by automatically \emph{fixing} such issues once they are found.
+
+\paragraph{Program synthesis for systems code.}
+Transit~\cite{udupa:transit} is a tool for automatically inferring distributed protocols
+such as those used for cache coherence.
+It guides the search using \emph{concolic} snippets~\cite{sen:concolic}---%
+effectively litmus tests that can be partially symbolic---%
+and finds a protocol that satisfies those snippets for \emph{any} ordering of messages.
+MemSynth~\cite{bornholt:memsynth} is a program synthesis tool for
+automatically constructing specifications of memory consistency models.
+MemSynth takes similar inputs to \depsynth---a set of litmus tests and a target language---%
+and its synthesizer generates and checks happens-before graphs for those tests.
+Adopting MemSynth's aggressive inference of partial interpretations~\cite{torlak:kodkod}
+to shrink the search space of happens-before graphs would be promising future work.
+
+\if 0
+
+Our work is motivated by previous work on crash consistency,
+on verifying storage systems, and on program synthesis for systems.
+
+\paragraph{Specification and Verification of Crash Consistency}
+Many existing works have explored how to specify crash consistency
+for storage systems and how to verify that systems maintain
+these properties \todo{other citations}.
+DepSynth draws from these works for its own
+representation of crash consistency properties.
+
+Featherstitch~ \cite{frost:featherstitch} introduces a framework that generalizes 
+multiple techniques for specifying crash consistency into the
+"writes-before" dependencies discussed in this paper.
+DepSynth builds on this work by removing the burden of describing
+dependencies from the developer.
+
+Several works have aimed to verify properties of file
+systems~\cite{amani:cogent,schellhorn:flashix}.
+FSCQ~\cite{chen:fscq} is a file system that has been proven crash consistent
+with a hand-written Coq proof using crash Hoare logic.
+GoJournal~\cite{chajed:go-journal} introduces techniques to limit the complexity of
+crash consistency proofs for file systems
+and demonstrates with a proof for a journaling file system.
+The Yggdrasil~\cite{sigurbjarnarson:yggdrasil} framework enables developers to write crash consistent
+file systems, but distinguishes itself by enabling for push-button
+verification. Compared to DepSynth, these works have stronger guarantees
+about crash consistency.
+% TODO explain why?
+The trade-off is that the burden on the developer is higher for these tools:
+all three require the developer to write a crash consistent file system,
+and FSCQ and GoJournal additionally require proofs.
+\todo{Is this ok to say?}
+
+\paragraph{Synthesis for Systems}
+% TODO structure better
+Several existing works in synthesis for ordering constraints in systems
+have inspired the techniques used in DepSynth.
+One body of such work focuses on distributed protocols for coordination
+between concurrent processes~\cite{alur:synth-protocols}.
+While DepSynth reasons about the orderings of
+writes to disk issued from a single process, these systems typically reason about
+transition functions over finite state machines and the order
+in which these transition functions may be applied.
+For example, Transit~\cite{udupa:transit} completes holes in transition functions
+using a CEGIS-style synthesis algorithm.
+% TODO explain differences?
+
+Other existing work aims to synthesize memory models for modern architectures.
+MemSynth~\cite{bornholt:memsynth} is a tool for reasoning about and synthesizing memory
+models that, like DepSynth, takes a set of litmus tests as part of its input.
+Using a series of SMT queries, MemSynth gradually fills in holes from an
+input memory model sketch to guarantee correctness over a given set of
+litmus tests.
+The key difference in these problems is the space of behaviors considered:
+while memory models must account for more complex orderings,
+intermediate states of storage systems are generally more complex than their
+architecural counterpart, making checking properties over storage system
+states more difficult.
+
+Ferrite~\cite{bornholt:ferrite}, a tool for verifying crash consistency models over litmus tests
+that can be extended to synthesize \texttt{fsync} invocations.
+While the synthesized \texttt{fsync} calls can guarantee crash consistency properties,
+they are far more restrictive on the allowed schedules than
+the output rules of DepSynth.
+\todo{Correct way to say this without diminishing Ferrite?}
+
+\paragraph{Finding Crash Consistency Bugs}
+While verification and synthesis techniques are able to provide
+formal guarantees about crash consistency, testing frameworks
+allow developers to find bugs without the overhead of modeling
+their implementation ~\cite{sun:pfscheck,fu:witcher}.
+CrashMonkey and Ace~\cite{mohan:crashmonkey} are a pair of tools that
+enable crash consistency testing for file systems
+by intelligently enumerating tests and simulating crashes.
+\todo{it is actually just exhaustively enumerating tests. I want to cite this +
+      something that intelligently enumerates tests}
+In our current implementation, DepSynth's random litmus test generator 
+is fairly simple, so adapting these techniques to choose better litmus
+tests would likely improve overall synthesis time.
+
+\fi

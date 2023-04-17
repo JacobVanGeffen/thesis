@@ -1,0 +1,224 @@
+\section{Evaluation}\label{sec:eval}
+
+This section answers three questions to demonstrate the effectiveness of \depsynth:
+\begin{enumerate}[left=0pt]
+\item Can storage system developers use \depsynth to synthesize dependency rules for a realistic storage system
+      rather than implementing their own crash-consistency approach by hand? (\S\ref{sec:eval:shardstore})
+\item Can \depsynth help storage system developers avoid crash-consistency bugs? (\S\ref{sec:eval:bugs})
+\item Does \depsynth's approach support a variety of storage system designs? (\S\ref{sec:eval:other})
+\end{enumerate}
+
+\subsection{\shardstore Case Study}\label{sec:eval:shardstore}
+
+To show that developers can use \depsynth to build realistic storage systems, 
+%instead of writing their own manual crash-consistency implementation,
+we implemented a key-value store that follows the design of \shardstore%
+\footnote{Anonymized for double-blind review.}~%
+\cite{bornholt:s3-anon},
+a key-value store operating in production for a major commercial cloud object storage service.
+
+\paragraph{Implementation.}
+The first step in using \depsynth is to implement the storage system itself.
+\shardstore's on-disk representation is a log-structured merge tree (LSM tree)~\cite{oneil:lsm},
+but with values stored outside the tree in a collection of extents.
+Our \shardstore-like storage system implementation
+consists of 1,200 lines of Racket code, including
+%includes five operations:
+five operations:
+the usual \texttt{put}, \texttt{get}, and \texttt{delete} operations on single keys,
+as well as a garbage collection \texttt{clean} operation that 
+evacuates all live objects in one extent to another extent, % (called \emph{reclamation} by \shard),
+and a \texttt{flush} operation that persists the LSM tree memtable to disk.
+Our implementation does not handle boundary conditions
+such as running out of disk space or objects too large to fit in one extent,
+but is otherwise faithful to the published \shardstore design.
+As a crash consistency predicate,
+we wrote a checker that validates all expected objects are accessible by \texttt{get} after a crash,
+and that the on-disk LSM tree contains only valid pointers to objects in extents.
+
+\paragraph{Synthesis.}
+With a storage system implementation in hand,
+a developer can use \depsynth to synthesize dependency rules that make the system crash consistent.
+\depsynth takes as input a set of litmus tests---%
+we randomly generated \shardstoreinputtests{} litmus tests for the \shardstore-like system,
+ranging in length from 1 to \shardstoremaxops operations.
+Executing these tests against the system
+led to an average of \shardstoreavgwrites and a maximum of \shardstoremaxwrites disk writes per test.
+Given these inputs, \depsynth synthesized a set of \shardstorenumrules dependency rules for \shardstore
+in \shardstoresynthesistime.
+To find a correct solution for all \shardstoreinputtests litmus tests,
+the \depsynth algorithm invoked the \rulesfortest procedure (line~\ref{alg:depsynth:rulesone} in \cref{fig:alg:depsynth})
+only \shardstoretestsused times, showing that \depsynth's incremental approach is effective at reducing the search space.\tighten
+
+\paragraph{Comparison to an existing implementation.}
+\shardstore is an existing production system and
+already supports crash consistency.
+Its implementation does not use a dependency-rule language like in \depsynth. 
+Instead, it implements a soft-updates approach~\cite{ganger:soft-updates}
+by constructing dependency graphs (i.e, happens-before graphs) at run time
+and sequencing writes to disk based on those graphs,
+similar to patchgroups in Featherstitch~\cite{frost:featherstitch}.
+We therefore compare our synthesized rules against \shardstore's dependency graphs
+to see how well \depsynth may replace an expert-written crash consistency implementation.
+
+For each of the \shardstoretestsused{} tests that \depsynth used while synthesizing dependency rules for \shardstore,
+we used an SMT solver to compute the set of valid crash schedules (\cref{def:valid-schedule})
+according to those synthesized dependency rules.
+We then executed the same test using the production \shardstore implementation,
+collected the run-time dependency graph it generated,
+and used an SMT solver to compute the set of valid crash schedules according to that graph.
+Given these two sets of crash schedules,
+we computed the set intersection and difference to classify them into three groups:
+schedules allowed by both implementations (i.e., both implementations agree),
+and schedules allowed only by one or the other implementation (i.e., the two implementations disagree).\tighten
+
+\begin{table}
+    \centering
+    \caption{Valid schedules allowed by the production \shardstore service versus
+    the dependency rules we synthesized for our \shardstore-like reimplementation.
+    A schedule allowed only by one implementation
+    means either that implementation is not crash consistent (it allows a schedule it should forbid)
+    or it admits more reordering opportunities (it allows a schedule it should allow).
+    ``Fixed'' results are after fixing two issues in \shardstore (one consistency, one performance)
+    that we identified by manually inspecting the ``original'' schedules.\tighten}
+    {\xsmall\input{data/shardstore.tex}}
+    \label{tab:shardstore-data}
+\end{table}
+
+\cref{tab:shardstore-data} shows the results of this classification
+across the \shardstoretestsused litmus tests.
+Overall, the two implementations agree on the validity of an average of \shardstoreagreementbeforefixes{} of crash schedules.
+The remaining crash schedules are in two categories:
+%
+\begin{enumerate}[left=0pt]
+\item Schedules allowed only by \depsynth mean either
+\depsynth's rules allow some schedules that are not crash consistent
+(a correctness issue in the synthesized rules)
+or \shardstore precludes some schedules that are crash consistent
+(a performance issue in \shardstore). 
+We found that every schedule allowed by \depsynth is crash consistent,
+and that \shardstore inserts unnecessary edges in its dependency graphs,
+ruling out some reorderings that would be safe.
+These edges are not necessary to guarantee crash consistency of the overall storage system,
+and so \depsynth is correct to allow them.
+However, \shardstore engineers intentionally include these edges as they make
+the representation invariant for an on-disk data structure simpler,
+even though a more complex invariant that did not require these edges would still be sufficient for consistency.
+In other words, \shardstore engineers favored a stronger, simpler invariant in these cases,
+where \depsynth is able to identify opportunities for performance improvements.
+
+\item Schedules allowed only by \shardstore mean either
+\depsynth's rules preclude some schedules that are crash consistent
+(meaning \depsynth's output is not optimal)
+or \shardstore allows some schedules that are not crash consistent
+(a correctness issue in \shardstore).
+\shardstoreresetschedulespct{} of these schedules are incorrectly allowed by \shardstore
+due to a rare crash-consistency issue
+that was independently discovered concurrently with this work.
+We have confirmed with \shardstore engineers that
+the issue was an unlikely edge case that could not lead to data loss,
+but could lead to ``ghost'' objects---resurrected pointers to deleted objects,
+where the object data has been (correctly) deleted,
+but the pointer still exists---%
+which result in an inconsistent state.
+After fixing this issue in \shardstore,
+we manually inspected the remaining schedules it allowed
+and confirmed they are all cases where \depsynth's rules generate extraneous edges
+(i.e., the synthesized rules are not optimal),
+and the crash-consistency predicate we wrote for our \shardstore reimplementation
+agrees that all the resulting states are consistent.
+\end{enumerate}
+%
+After fixing the two \shardstore issues discussed above,
+the synthesized dependency rules agree with \shardstore on the validity of an average of \shardstoreagreementafterfixes{} of crash schedules.
+The few remaining schedules are ones that \depsynth's synthesized dependency rules 
+conservatively forbid due to the coarse granularity of the dependency rule language.
+Overall, this study shows that \depsynth achieves similar results to an expert-written crash consistency implementation,
+%allowing most performance optimizations that the real implementation allows,
+and can help identify correctness and performance issues in existing storage systems.
+
+\paragraph{Generalization.}
+One risk for example-guided synthesis techniques like \depsynth
+is that they can overfit to the examples (litmus tests)
+and not actually ensure crash consistency on unseen test cases.
+\depsynth's design reduces this risk
+by using a simple dependency rule language (\cref{def:dependency-rule})
+that cannot identify individual write operations.
+To test generalization,
+we randomly generated an additional \shardstoregeneralizationextratests{} litmus tests
+for our \shardstore-like system.
+We also allowed these tests to be significantly longer than those used during synthesis---%
+up to a maximum of \shardstoregeneralizationmaxwrites{} writes
+rather than the \shardstoremaxwrites{} in the input set of litmus tests.
+For each new test,
+we used the synthesized dependency rules
+to compute all valid crash schedules for the test,
+and found that every crash schedule resulted in a consistent disk state
+according to our crash consistency predicate.
+In other words, by limiting the expressivity of our dependency rule language,
+the rules we synthesize can generalize well beyond the tests they were generated from.
+
+\subsection{Crash-Consistency Bugs}\label{sec:eval:bugs}
+
+\begin{table}
+    \centering
+    \caption{Sample crash-consistency bugs in three storage systems reported by two recent papers~\cite{bornholt:s3,mohan:crashmonkey}.
+    Each bug includes its identifier (bug number for ShardStore, kernel Git commit for btrfs and f2fs).
+    Most of these bugs could have been prevented by using \depsynth to automatically identify missing ordering requirements,
+    but some crash-consistency issues are either not ordering related or are unlikely to be detected by \depsynth's litmus-test-driven approach.}
+    {\xsmall\input{data/bugs}}
+    \label{fig:bugs}
+\end{table}
+
+To understand how effective \depsynth can be in preventing crash-consistency bugs,
+we surveyed all bugs reported by two recent papers~\cite{bornholt:s3,mohan:crashmonkey}
+in three production storage systems
+for which a known fix is available.
+We manually analyze each bug and determine whether \depsynth could discover and prevent them.
+
+\cref{fig:bugs} shows the results of our survey.
+In six cases, \depsynth could have prevented the bug
+by synthesizing a dependency rule to preclude a problematic reordering optimization.
+Each of these bugs had small triggering test cases,
+suggesting they would be reachable by a litmus-test-based approach like ours.
+In the other three cases, our analysis shows that \depsynth would not prevent the bug.
+One bug in ShardStore was a specification bug
+in which the crash consistency predicate was too strong.
+\depsynth assumes that the crash consistency predicate is correct,
+and will miss specification bugs.
+%and so unless the predicate was so strong that no solution was possible
+%(in which case \depsynth would return \UNSAT),
+%it would not detect any issues.
+Another bug in ShardStore involved a collision between two randomly generated UUIDs.
+While such a bug would be possible to find in principle using litmus tests,
+it would be very unlikely,
+and without a test that triggers the issue \depsynth cannot preclude it.
+One bug in f2fs involved an incorrect file size being computed when zero-filling a file
+beyond its existing endpoint.
+This bug was a logic issue rather than a reordering one (i.e., occurring even without a crash),
+and so no dependency rule would suffice to prevent it.
+Overall, our analysis indicates
+that \depsynth can prevent a range of ordering-related crash-consistency bugs,
+but other bugs would require a different approach.
+
+\subsection{Other Storage Systems}\label{sec:eval:other}
+
+In addition to the \shardstore case study, % in \cref{sec:eval:shardstore},
+we have also used \depsynth
+to implement a log-structured file system~\cite{rosenblum:lfs}.
+%with support for files and directories.
+The file system supports five standard POSIX operations:
+\texttt{open}, \texttt{creat}, \texttt{write}, \texttt{close}, and \texttt{mkdir}.
+While our implementation is simple (300 lines of Racket code) compared to production file systems,
+it has metadata structures for files and directories,
+and so has its own subtle crash consistency requirements.
+For example, updates to data and inode blocks must reach the
+disk before the pointer to the tail of the log is updated.
+To synthesize dependency rules for this file system,
+we randomly generated \lfsinputtests{} litmus tests
+with at most \lfsmaxops{} operations.
+\depsynth synthesized a set of \lfsnumrules{} dependency rules
+in \lfssynthesistime{} to make the file system crash consistent,
+and during the search,
+invokes \textsc{RulesForTest} for only \lfstestsused{} tests.
+This result shows that \depsynth can automate crash consistency for storage systems other than key-value stores.

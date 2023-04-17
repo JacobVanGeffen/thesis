@@ -1,0 +1,183 @@
+\section{Implementation}\label{s:impl}
+
+We implement both the \depsynth algorithm
+and the storage systems we study in \cref{sec:eval}
+in Rosette~\cite{torlak:rosette},
+an extension of Racket~\cite{felleisen:racket}
+with support for verification and synthesis.
+Using Rosette as our host language gives us symbolic evaluation of the storage system implementation for free,
+and simplifies implementing the \crashconsistentalg query in \cref{fig:alg:depsynth}.
+The choice of Rosette and Racket is not fundamental;
+recent work has shown how to extend the symbolic evaluation approach to languages
+such as Python~\cite{sigurbjarnarson:yggdrasil} or C~\cite{nelson:serval}
+in which storage systems are more commonly implemented.
+
+\paragraph{Ordering.}
+The \depsynthalg algorithm in \cref{fig:alg:depsynth}
+is sensitive to the order in which \textsc{NextTest} chooses tests to generate dependency rules for.
+Our implementation chooses tests in increasing order of size,
+minimizing the number of happens-before graphs for \rulesfortest to explore.
+Similarly, \rulesfortest is sensitive to the order it considers writes (\phaseone)
+and edges (\phasetwo).
+In both cases, we exploit the following observation: 
+while an execution that persists writes in program order is not \emph{required} to be crash consistent
+(e.g., because storage systems might selectively buffer or coalesce writes),
+it is often so in practice.
+\rulesfortest therefore prefers to choose writes in \phaseone in program order,
+and prefers to remove edges in \phasetwo that contradict program order.
+
+\paragraph{Reducing solver queries.}
+Both \phaseone and \phasetwo in \cref{fig:alg:rulesfortests}
+have symmetry in their search space:
+for a fixed pair of writes $w_1$ and $w_2$,
+there are many different branches of \phaseone
+that try to order $w_2$ after $w_1$,
+and many different branches of \phasetwo
+that try to remove the edge $(w_1, w_2)$ from a happens-before graph.
+If we can determine ahead of time that such a choice for those writes is always doomed to fail,
+we can avoid considering these choices at all
+and so save the cost of an SMT solver query by \crashconsistentalg.
+Our implementation of \rulesfortest
+uses an SMT solver to
+pre-compute a set of \emph{necessary} ordering edges---%
+edges which \emph{must} be in the happens-before graph---%
+and uses that set to short-circuit \crashconsistentalg.
+
+\if 0
+
+%\paragraph{Avoiding \multisearch}
+%In \autoref{alg:top-level}, we described our top-level algorithm as one that
+%first uses an efficient per-litmus-test search before defaulting to a
+%slower search for dependency graphs over multiple litmus tests.
+%However, even in the presence of rule conflicts, \depsynth can still avoid
+%performing the slower search in most cases. The way \depsynth achieves this
+%is by searching for new graphs for individual conflicting litmus tests
+%that, when extrapolated into rules, do not cause a conflict.
+%
+%Specifically, if \depsynth encounters a set of litmus tests $\{L_0, L_1, ...\}$
+%whose generated rules conflict, \depsynth first tries to generate a new graph and rules
+%for $L_0$ such that these new rules jj
+
+\paragraph{Rosette}
+\todo{Talk about how rosette is used in \depsynth}
+
+\paragraph{Limiting Queries with Preprocessing}
+
+% TODO explain necessary paths
+At each state of the dependency graph search in \sccsearch, \depsynth
+performs an SMT query to determine if the current candidate graph
+is sufficient. These queries save time by allowing \sccsearch to avoid
+searching unnecessary spaces, but the queries themselves are not free.
+Though the queries are fairly lightweight, as the free variables are on
+the order of 10s of boolean values, they still introduce noticeable overhead.
+
+Generally, the results of sufficiency queries for similar graphs are similar:
+one example is that, as previously discussed, subgraphs of insufficient graphs
+are always insufficient.
+In fact, we noticed that in most cases, certain paths between nodes are
+\textit{necessary} in the final output of \sccsearch, meaning that
+removing all paths between these nodes from a graph would immediately
+cause it to become insufficient.
+Intuitively, these necessary paths exist whenever all solution graphs
+to our search must contain such a path.
+If \depsynth can precompute the set of necessary paths,
+we can avoid querying for sufficiency over graphs that lack any.
+
+Formally, we say there is a \textit{necessary path} from $w_0$ to $w_1$, whenever
+there \textit{does not} exist a schedule with $\syncbool_0\mapsto\true$
+and $\syncbool_1\mapsto\false$ that satisfies the crash consistency property
+(i.e. committing $w_0$ before $w_1$ is never crash consistent).
+If such a schedule does not exist, it means that for every schedule satisfying
+the property, $\syncbool_0\implies\syncbool_1$, and so any solution graph to our
+search must contain a path from $w_0$ to $w_1$.
+When a graph lacks any path from $w_0$ to $w_1$, it can be pruned
+without checking for sufficiency.
+For each pair of writes $w_i,w_j$,
+we can determine if there is a necessary path from $w_i$ to $w_j$
+by querying over all schedules with
+$\syncbool_j\mapsto\true$ and $\syncbool_j\mapsto\false$.
+
+% TODO explain how nec paths reduce the number of queries we have to make
+Though this precomputation would prevent some sufficiency queries,
+it requires checking for necessary paths between all nodes.
+Naively, this would take $|\omega|(|\omega|-1)$ queries for set of writes
+$\omega$, but we can avoid most of these queries by taking advantage of the fact
+that our SMT solver returns a concrete schedule whenever a necessary
+path \textit{does not} exist.
+Specifically, when query for writes $w_0$ and $w_1$ determines that there is
+a schedule that satisfies property $\mathcal{P}$ where $\syncbool_0\mapsto\true$
+and $\syncbool_1\mapsto\false$, consider all other pairs $i,j$ in the schedule
+where $\syncbool_i\mapsto\true$ and $\syncbool_j\mapsto\false$.
+From this schedule, we can also deduce that there is no necessary path
+from $w_i$ to $w_j$. Using this optimization, we can compute all necessary paths
+on the order of $O(|\omega|)$ queries.
+
+An added benefit of necessary edges is that \sccsearch can start from 
+a smaller graph than the complete graph. Specifically, if there exists
+a necessary path from $w_0$ to $w_1$, then we can remove edge $(w_1, w_0)$
+from the starting graph, as any sufficient graph with both a path from
+$w_0$ to $w_1$ and edge $(w_1, w_0)$ must contain a cycle.
+In some cases, this means that not all starting nodes share a single SCC.
+
+\paragraph{Prioritizing choices in \sccsearch}
+\todo{These few paragraphs could go in the technical section, just not sure}
+In \autoref{alg:scc-search}, we describe an algorithm that, at each step,
+chooses an arbitrary node to order with respect to other nodes in its
+strongly connected component.
+In practice, \depsynth prioritizes ordering nodes in two ways:
+\begin{enumerate}
+  \item Order nodes as they would be ordered with previously generated rules.
+  \item Order nodes from newest to oldest.
+\end{enumerate}
+
+Since \depsynth keeps the set of rules it has generated so far,
+it prefers solutions for new litmus tests to agree with previously generated rules.
+This is \textit{not} only because avoiding conflicts saves time.
+Intuitively, as \depsynth generates rules for increasingly more tests in the input set,
+its confidence in the rules it has generated thus far becomes greater.
+This gives further reason for \depsynth to prefer graphs that obey previously generated rules.
+
+To give intuition about our second heuristic, newer writes tend to depend on older writes
+because dependencies are "happens before" relationships.
+From our experience, data updates are more likely to rely on previous updates than future ones.
+As a result, prioritizing our search in this way leads to generating correct rules more often.
+Of course, correct dependency graphs may not follow either of these heuristicts,
+but since \sccsearch can backtrack on ordering decisions,
+these heuristics do not compromise correctness.
+
+\paragraph{Optimizations in \multisearch}
+\autoref{alg:multi-search} describes a search over graphs for multiple litmus
+tests that, like \autoref{alg:remove-edges}, removes edges one-at-a-time
+to arrive at candidates. In practice, \depsynth also the uses SCC-splitting
+optimization from \autoref{alg:scc-search} in \multisearch.
+
+% Talk about using input rules as necessary paths?
+% Additionally, \depsynth leverages necessary paths to prune the
+% search away from graph sets that conflict with input rules.
+% Rules output by \multisearch should not conflict with
+% the set of input rules. Like necessary paths,
+
+\paragraph{Skipping Tests}
+Since \autoref{alg:top-level} gradually builds up a set of rules,
+\depsynth will likely encounter litmus tests along the search where
+the current candidate set of rules is sufficient to make the litmus
+test crash consistent. When this is the case, \depsynth skips \rulessearch
+for that test and does not generate any new rules. \depsynth still updates
+the mapping from litmus tests to rules with the set of rules used for the test.
+This is because the test may be relevant for later conflict resolution.
+
+\paragraph{Reordering Tests}
+Depending on the order of the input litmus tests, \depsynth may encounter tests for which
+\rulessearch performs slowly. Specifically, when \rulessearch times out
+for such a test, \depsynth postpones the search for the test until the end of the loop.
+By doing so, \depsynth may be able to synthesize sufficient rules for the test by
+finding rules for other, simpler tests. If so, \depsynth can skip the search for the
+challenging test at the end.
+
+Executing \rulessearch to a timeout is still expensive, and \depsynth avoids doing so
+when possible by ordering the input litmus tests before performing \toplevel.
+Specifically, \depsynth orders litmus tests based on the number of disk writes the
+test generates, from least to greatest. This allows \depsynth to find rules for simpler
+tests before moving on to more complex tests.
+
+\fi

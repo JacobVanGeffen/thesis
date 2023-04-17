@@ -1,0 +1,23 @@
+\newcommand{\impl}{\ensuremath{\mathcal{O}}\xspace}
+\newcommand{\test}{\ensuremath{T}\xspace}
+\newcommand{\tests}{\ensuremath{\mathcal{T}}\xspace}
+\newcommand{\consist}{\ensuremath{\emph{Consistent}}\xspace}
+\newcommand{\rulemap}{\ensuremath{\mathcal{R}}\xspace}
+\newcommand{\ruleset}{\ensuremath{R}\xspace}
+% \newcommand{\writesused}{\ensuremath{W_U}\xspace}
+% \newcommand{\writesleft}{\ensuremath{W_R}\xspace}
+\renewcommand{\wr}{\ensuremath{W}\xspace}
+\newcommand{\ord}{\ensuremath{V}\xspace}
+\newcommand{\gr}{\ensuremath{G}\xspace}
+\newcommand{\comp}{\ensuremath{C}\xspace}
+
+\begin{algorithmic}[1]
+\algrestore{depsynth}
+
+\Function{ResolveCycle}{\rulemap, \impl, \consist}
+    \State $C \gets \Call{GetCycle}{\cup_{(T' \mapsto R) \in \rulemap} R}$  \Comment{Identify rules $C \subseteq R$ that participate in the cycle}
+    \State $\tests' \gets \{ T \ | \ (T \mapsto R) \in \rulemap \land T \in C \}$  \Comment{Collect the tests that generated rules in $C$}
+    \State \Return \Call{RulesForTests}{\tests', \impl, \consist}
+\EndFunction
+
+\end{algorithmic}

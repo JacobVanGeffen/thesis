@@ -1,5 +1,9 @@
 \documentclass[12pt]{book}
 
+%% Added by Jacob
+\usepackage{makecell}
+%%%%%%%%%%%%%%%%
+
 \usepackage{hyperref}
 \def\chapterautorefname{Chapter}
 \def\sectionautorefname{Section}
@@ -39,13 +43,14 @@
 
 \setlength{\marginparwidth}{2cm}
 \usepackage[textsize=tiny]{todonotes}
-\renewcommand\max[2][]{\todo[color=orange, #1]{\sffamily #2}}
+%\renewcommand\max[2][]{\todo[color=orange, #1]{\sffamily #2}}
 
 \usepackage{libertine}
 \usepackage[libertine]{newtxmath}
 \usepackage[scaled=.85]{DejaVuSansMono}
 
-\usepackage{listings}
+%\usepackage{listings}
+\usepackage[procnames]{listings}          % format code
 \lstset{
   columns=fullflexible,
   keepspaces=true,
@@ -81,13 +86,14 @@
   morekeywords=[3]{bool, char, f32, f64, i8, i16, i32, i64, isize, str, u8, u16, u32, u64, unit, usize, i128, u128},
 }%
 
-\def\mytitle{Practical and Flexible Equality Saturation}
-\def\myauthor{Max Willsey}
-\def\year{2021}
+\def\mytitle{Program Synthesis for Systems Developers}
+\def\myauthor{Jacob Van Geffen}
+\def\year{2023}
 
 \title{\mytitle}
 \author{\myauthor}
 
+% TODO write thesis statement here
 \newcommand\thesisstmt{%
   e-graphs and equality saturation are compelling techniques for
   program representation and manipulation that should now be considered
@@ -97,6 +103,8 @@
 \newcommand\Thesisstmt{\expandafter\MakeUppercase \thesisstmt}
 
 \input{macros}
+\input{dmacros}
+\input{data/nr}
 
 \begin{document}
 \pagestyle{empty}
@@ -124,9 +132,10 @@
   \vfill
 
   Reading Commitee: \\
-  Luis Ceze, Chair \\
-  Adriana Schulz \\
-  Zachary Tatlock
+  Emina Torlak, Chair \\
+  Xi Wang \\
+  Zachary Tatlock \\
+  Shane Steinert-Threlkeld
   \vfill
 
   \begin{spacing}{1}
@@ -156,7 +165,7 @@
   % Adriana Schulz   \qquad
   % Zachary Tatlock  \\[-0.5em]
   Chair of the Supervisory Committee: \\[-0.5em]
-  Luis Ceze \\[-0.5em]
+  Emina Torlak \\[-0.5em]
   \pgas
   \\[2em]
 \end{center}
@@ -166,6 +175,7 @@
   \tableofcontents
 \end{spacing}
 
+% TODO write acknowledgements HERE
 \chapter*{Acknowledgments}
 
 This thesis covers work done in the final year and a half of my PhD.
@@ -206,13 +216,14 @@ And finally,
 \renewcommand{\chaptermark}[1]{\markboth{\sc{\chaptername\ \thechapter.\ #1}}{}}
 \renewcommand{\sectionmark}[1]{\markright{\sc{\thesection.\ #1}}{}}
 % \listoftodos
-\input{chapters/01-intro}
-\input{chapters/02-background}
-\input{chapters/03-rebuilding}
-\input{chapters/04-analyses}
-\input{chapters/05-egg}
-\input{chapters/06-case-studies}
-\input{chapters/99-conclusion}
+%\input{chapters/01-intro}
+%\input{chapters/02-background}
+%\input{chapters/03-rebuilding}
+%\input{chapters/04-analyses}
+%\input{chapters/05-egg}
+%\input{chapters/06-case-studies}
+%\input{chapters/99-conclusion}
+\input{chapters/depsynth/depsynth}
 
 \clearpage
 \addcontentsline{toc}{chapter}{Bibliography}

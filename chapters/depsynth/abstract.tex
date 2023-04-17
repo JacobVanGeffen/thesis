@@ -1,0 +1,28 @@
+Reliable storage systems must be \emph{crash consistent}---%
+guaranteed to recover to a consistent state after a crash. %---%
+%to support the availability and durability needs of applications.
+Crash consistency is non-trivial
+as it requires maintaining complex invariants
+about persistent data structures 
+in the presence of caching, reordering, and system failures.
+Current programming models offer little support for implementing crash consistency,
+forcing storage system developers to roll their own consistency mechanisms.
+Bugs in these mechanisms can lead to severe data loss
+for applications that rely on persistent storage.\tighten
+
+This paper presents a new \emph{synthesis-aided} programming model
+for building crash-consistent storage systems.
+In this approach, storage systems can assume
+an \emph{angelic crash-consistency} model,
+where the underlying storage stack
+promises to resolve crashes in favor of consistency whenever possible.
+To realize this model,
+we introduce a new \emph{labeled writes} interface for developers to identify their writes to disk,
+and develop a program synthesis tool, \depsynth,
+that generates \emph{dependency rules}
+to enforce crash consistency over these labeled writes.
+We evaluate our model in a case study
+on a production storage system at a major cloud provider.
+We find that \depsynth can automate crash consistency for this complex storage system,
+with similar results to existing expert-written code,
+and can automatically identify and correct consistency and performance issues.

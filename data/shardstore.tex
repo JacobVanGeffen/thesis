@@ -1,0 +1,21 @@
+\newcommand\shardstorecomparisontotaltests{10}
+
+\begin{tabular}{crrrrrrrr}
+\toprule
+ & & & \multicolumn{2}{c}{\makecell{Allowed\\by both}} & \multicolumn{2}{c}{\makecell{Allowed only\\by \depsynth}} & \multicolumn{2}{c}{\makecell{Allowed only\\by \shardstore}} \\
+\cmidrule(lr){4-5} \cmidrule(lr){6-7} \cmidrule(lr){8-9}
+Test & Test Length & Writes & Original & Fixed & Original & Fixed & Original & Fixed \\
+\midrule
+$T_{1}$ & 1 & 2 & 3 & 3 & 0 & 0 & 0 & 0 \\ 
+$T_{2}$ & 2 & 6 & 7 & 14 & 7 & 0 & 3 & 3 \\ 
+$T_{3}$ & 5 & 1 & 2 & 2 & 0 & 0 & 0 & 0 \\ 
+$T_{4}$ & 5 & 7 & 8 & 15 & 7 & 0 & 3 & 3 \\ 
+$T_{5}$ & 4 & 7 & 11 & 29 & 9 & 0 & 9 & 0 \\ 
+$T_{6}$ & 5 & 5 & 6 & 12 & 2 & 0 & 4 & 0 \\ 
+$T_{7}$ & 7 & 5 & 5 & 11 & 2 & 0 & 5 & 1 \\ 
+$T_{8}$ & 10 & 5 & 6 & 12 & 2 & 0 & 4 & 0 \\ 
+$T_{9}$ & 16 & 6 & 8 & 22 & 2 & 0 & 12 & 0 \\ 
+$T_{10}$ & 13 & 9 & 21 & 41 & 20 & 0 & 9 & 9 \\ 
+
+\bottomrule
+\end{tabular}

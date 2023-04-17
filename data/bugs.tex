@@ -1,0 +1,15 @@
+\begin{tabular}{lll}
+\toprule
+Storage system & Crash-consistency bug & Preventable by \depsynth? \\
+\midrule
+ShardStore & Inconsistency in extent allocation (\#6) & Yes \\
+ShardStore & Mismatch between soft and hard write pointers (\#7) & Yes \\
+ShardStore & Index entries persisted before target data (\#8) & Yes \\
+ShardStore & Crash consistency predicate too strong (\#9) & No---specification bug \\
+ShardStore & Data loss after UUID collision (\#10) & No---unlikely to detect \\
+btrfs & Extents deallocated too early in recovery (\texttt{bf50411}) & Yes \\
+btrfs & Inode rename commits out of order (\texttt{d4682ba}) & Yes \\
+f2fs & \texttt{fsync} failed after directory rename (\texttt{ade990f}) & Yes \\
+f2fs & Wrong file size when zeroing file beyond EOF (\texttt{17cd07a}) & No---not reordering \\
+\bottomrule
+\end{tabular}

@@ -12,7 +12,7 @@
 
 % \usepackage{courier}            % standard fixed width font
 %\usepackage[scaled]{helvet} % see www.ctan.org/get/macros/latex/required/psnfss/psnfss2e.pdf
-%\usepackage[procnames]{listings}          % format code
+\usepackage[procnames]{listings}          % format code
 \usepackage[shortlabels]{enumitem}      % adjust spacing in enums
 \usepackage{algorithm,algorithmicx}
 \usepackage{graphicx}
@@ -27,8 +27,8 @@
 \usepackage{esvect}
 \usepackage{xspace}
 \usepackage{array, multirow} % multirow in table
-% \usepackage{rotating, makecell} % cell rotation
-%\usepackage[noend]{algpseudocode}
+\usepackage{rotating, makecell} % cell rotation
+\usepackage[noend]{algpseudocode}
 \usepackage{balance}
 \usepackage{qtree}
 %\usepackage{amsfonts}
@@ -51,7 +51,7 @@
 \newcommand{\definitionautorefname}{Definition}
 % COMMANDS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %\newcommand{\toolname}{{\sc Austenite}\xspace}
-\newcommand{\depsynth}{\textsc{DepSynth}\xspace}
+\newcommand{\toolname}{\textsc{DepSynth}\xspace}
 \newcommand{\shardstore}{\textsc{CloudKV}\xspace}
 %\newcommand{\depsynth}{{\sc DepSynth}\xspace}
 \newcommand{\kv}{storage system\xspace}
@@ -78,7 +78,7 @@
 \newcommand{\false}{\textbf{false}\xspace}
 \newcommand{\tvar}[1]{\makebox[.9em][r]{$#1$}}
 \newcommand{\local}{\mathid{op}}
-%\newcommand{\concat}{\oplus}
+\newcommand{\concat}{\oplus}
 \newcommand{\deprule}[3]{#1\rightsquigarrow_{#3}#2}
 \newcommand{\depedge}[2]{#1\rightsquigarrow #2}
 \DeclareMathOperator{\extractop}{extract}
@@ -93,7 +93,7 @@
 
 \newcommand{\cc}[1]{\texttt{#1}}
 
-%\newcommand{\todo}[1]{\textbf{\color{red} [[#1]]}}
+\newcommand{\todo}[1]{\textbf{\color{red} [[#1]]}}
 
 \newcommand{\tighten}{\looseness=-1}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

@@ -1,0 +1,200 @@
+OOPSLA 2022 Paper #147 Reviews and Comments
+===========================================================================
+Paper #147 Synthesis-Aided Crash Consistency for Storage Systems
+
+
+Review #147A
+===========================================================================
+
+Paper summary
+-------------
+The paper proposes a synthesis-based tool, DepSynth, to aid system designers implement crash-consistent storage systems. When using DepSynth, the designer assumes a strong crash consistency model and specifies (i) their system implementation where the writes to disk are labeled, (ii) a crash consistency property that must hold at every state of that system, and (iii) a set of litmus tests that exercise the implementation. Then, DepSynth uses a two-phased procedure to efficiently synthesize dependency rules over these labeled writes that render the system crash-consistent on more realistic storage systems. Finally, DepSynth implements a dependency-aware buffer that enforces the dependency rules at runtime. DepSynth is evaluated on a key-value store used in production and is able to generate dependency rules comparable to those written by an expert system designer.
+
+Assessment
+----------
+++ I like how program synthesis is adopted in this domain where the synthesis goal is to help with the tedious parts of the design process while only requiring simple labels from the designer.
+
+++ While the approach only uses a flavor of example-guided synthesis where the dependency rules are only based on a set of litmus tests, the paper shows an effort to avoid overfitting and demonstrates empirically that this is not really an issue in practice.
+
+++ The paper is well written and illustrates its ideas with a lot of examples.
+
+-- Example 3.6 was a little confusing to follow. I believe that the figures have an “off by one” error. For instance, the (0,42) block is in $P_{initial}$ where no crashes happen, so it should be shown in all figures. The crash schedule in point (4) allows the block (1,81) to be written but it is missing. And so on.
+
+Comments for author
+-------------------
+Typos and minor presentation suggestions:
+
+- Line 53, I would remove “crash consistency” from the list of key aspects the designer needs to worry about since it might give the impression that the user is still fully responsible for that. Or, at least change it to something like “specifying consistency properties”.
+- Line 343, “and demonstrate its desired consistency behavior” is a little unclear.
+- Line 348, “crash states” what are these? I assume just all the system states.
+- Line 370, typo: $f_{write}(d,a,v,b)$ should be $f_{write}(d,a,v,s)$.
+- Line 388, typo: “syste”.
+- Line 403, the point from before about example 3.6.
+- Line 679, “partial order” was called later “total order”. Please make it consistent.
+- Line 744, “our implementation resolves cycles”. From the previous paragraphs, it seemed that this could be done but was not. Maybe clarify a bit.
+
+Questions for Author Response
+-----------------------------
+- Were there scenarios where labeling the writes was non-trivial or required rewriting the implementation a little to allow for finer-granularity labeling (e.g., say, manipulating the epoch counter)? Do you see automating label generation to be feasible? (e.g., maybe all writes in the same function body have the same epoch).
+
+- The pruning mechanism for total orders eliminates prefixes that are shown to violate the crash consistency property. Can one adopt a notion of counterexample generalization here and try to determine which part (e.g. subsequence) of the prefix is the real root cause of the problem so that subsequence (as opposed to a prefix) is used to rule out future total orders? You seem to hint about that in the implementation section (Line 773) with necessary edges.
+
+
+
+Review #147B
+===========================================================================
+
+Paper summary
+-------------
+This paper presents DepSynth, a mostly automated approach to enforcing consistency of storage systems in the face of crashes. Storage system implementers use a specific API for implementing their systems exhibiting "labeled" writes, where labels denote data structures used (e.g. log, superblock) and epochs. Then a set of "litmus" tests are provided with a crash consistency predicate capturing consistency constraints on data structures, based on which the system infers dependency rules, which are then enforced by a buffer cache at runtime. The paper presents a model of the API/disk model, dependency rules, storage implementation, and litmus tests, before presenting an algorithm that takes instances of the latter two and a crash consistency predicate to synthesize dependency rules. The paper presents a prototype implementation of DepSynth in Rosette, and applies it to a key/value store, arguing that it allows correct schedules prohibited by the original "monolithic" system, whilst 67% of schedules inversely allowed by the original system but not by DepSynth are due to a consistency bug discovered concurrently to the present work.
+
+Assessment
+----------
+This is an interesting and well-written paper.
+
+Pros
+Well-written
+Relevant problem
+
+Cons
+Limited evaluation on 1 non-independent system
+No performance considerations in evaluation
+
+Comments for author
+-------------------
+While I enjoyed reading the paper, I feel that in its current form it is lacking in terms of certain important aspects to be publishable. My main concern is applicability in practice, and with that respect limitations in the evaluation.
+
+The idea of automating the inference and enforcement of dependency constraints is certainly appealing. However this has to be carefully balanced against 1. other efforts and 2. potential performance hits, and has to be 3. demonstrated/validated in a general perspective.
+
+Regarding 1. the paper lacks information on the efforts of implementing against the specific API (the model makes operations look independent but I suspect meta-data re epochs has to be managed) and for coming up with appropriate litmus tests, and also does not detail the consistent() predicates, neither qualitatively in terms of model nor quantitatively in the context of the case study.
+
+Regarding 2. the paper includes no performance result at all, making it hard to grasp whether the generic methodology and its generic form of runtime verification are performance-wise viable.  As the evaluation shows/discusses, the original system compared against used a simplified internal representation of dependencies/conflicts which prohibited certain correct schedules, but this can very well have been done for performance reasons. Even with 99% same rules (after fixes) there may still be very important differences (performance-wise).
+
+Regarding 3. the paper really only presents 1 case study of the approach on a system that is even kept anonymous. Without trying to understand why the system couldn't be named, I can't understand why that system had to be chosen if there are enough systems to choose from where this methodology would be applicable/pay off. I'd find it hard to believe that the authors for whatever reason were connected to several industrial-strength systems. 
+
+Independently of any of the above, while I'm sure that there are many candidate systems for the approach (conceptually speaking) I personally feel that choosing the cloud as a target scenario is suboptimal -- the cloud paradigm rather promotes the use of replication for providing high availability in the presence of failures in lieu of relying entirely on recovery (as the paper itself states, valid updates can get lost even if -- or especially when -- consistency prevails with crash recovery).
+
+
+Some minor suggestions/questions/points
+
+- why not expand l =< n, t > in the API?
+
+- def 3.2 "then the cache ensures the write to 𝑎1 does not persist until the write to 𝑎2 is persisted on disk." does the write return to the application though or is it blocked?
+
+- line 297 "such as providing transactional semantics" I think this sounds a lot easier here than it is to do (efficiently)
+
+- line 391 was the \rightarrow notation introduced before?
+
+- line 528 please elaborate on why synthesizing rules for a set of tests at once would not yield cyclic dependencies whereas by synthesizing rules for each of the same tests at a time that's possible
+
+- line 728 please elaborate on why the rules generated for each test are guaranteed to be acyclic?
+
+- line 770 and following how is the set of necessary ordering edges computed?
+
+Questions for Author Response
+-----------------------------
+I understand the simplifying assumption of 1 storage entity per block, but this hardly holds in practice. What happens then?
+
+Are both < and > epoch predicates necessary? Can't one be achieved via the other by inverting the parameters?
+
+
+
+Review #147C
+===========================================================================
+
+Paper summary
+-------------
+The paper presents a programming model for implementing crash
+consistency in storage system. The model is based on a a
+dependency-aware buffer cache that ensures a write is only sent to
+disk after all the writes it depends on have been
+persisted. Implementing this cache is left outside of the paper, and
+the paper focuses on the question of how to define the dependency
+relation between writes. Too much dependency may lead to poor
+performance, but too little dependency may lead to inconsistent states
+following a crash. The paper's main technical contribution is a
+framework and algorithm that automatically find a set of dependency
+rules, based on an implementation of the system, a consistency
+predicate over states, and a set of tests. The algorithm finds a set
+of rules that ensure the tests (with crashes) cannot result in an
+inconsistent state. The dependency rules follow a simple form, and
+require writes to be labeled by (name, epoch) pairs, and it is up to
+the programmer to provide a useful labeling of the writes. The
+approach is evaluated on a Racket implementation of a key-value store
+inspired by a real production key-value store.
+
+Assessment
+----------
+Pros:
+
+* Crash consistency of storage systems is an important challenge,
+  recently drawing significant attention from the systems verification
+  community.
+
+* The paper is motivated by and evaluated on real-world systems.
+
+* Alleviating some of the burden of designing crash consistent systems
+  seems appealing.
+
+Cons:
+
+* I have some reservations about the paper's crash model (see below).
+
+* The user is still required to provide labels, and in general design
+  the mechanisms that lead to crash consistency (e.g., log data
+  structures), so it is not clear how much of the burden is actually
+  lifted from the user.
+
+* There are no formal guarantees beyond the test cases.
+
+* It wasn't clear to me that a "consistent state" predicate is
+  expressive enough to capture crash tolerance. Specifically, it seems
+  that it cannot capture the correctness of user facing sync/flush
+  operations, and possibly other guarantees that storage system
+  provide to users (e.g., transactions).
+
+* It is not clear if the focus on write dependencies and assuming a
+  dependency-aware buffer cache do not make the paper's contribution
+  only applicable to a very specific class of crash-tolerant storage
+  systems.
+
+I am not an expert in crash tolerant storage systems, so some of my
+reservations may be uninformed, but at least the paper did not make a
+convincing case to address these reservations.
+
+Comments for author
+-------------------
+I found the crash model of Section 3 to be very surprising. It seems
+that if a crash occurs during a write, the effect of that write is
+ignored, but afterwards the program continues to execute
+normally. However, in reality, a crash would also delete all of the
+in-memory data (e.g. program variables), and the program would not
+continue from the same point. Instead, a crash recovery procedure
+would be initiated that would restore the in-memory state from the
+disk (and can even perform some cleanup operations on the disk).
+
+The paper also seems to implicitly assume that writes may only depend
+on writes that were previously issued, even though that is never
+stated. Without this assumption, a dependency-aware buffer cache can
+never send any write to the disk, since there is always the potential
+of a future write to arrive that must be persisted prior to it, due to
+a dependency rule. In general, some form of static analysis would be
+required to ensure that for a given rule set and implementation code,
+a write can only depend on previous writes, but the paper does not
+mention such an analysis.
+
+I found the algorithm of sections 4.2 and 4.3 to be overly
+complex. What is the advantage of searching over total order and
+graphs, rather than directly searching over sets of rules? Consistency
+is also monotonic w.r.t. sets of rules.
+
+Questions for Author Response
+-----------------------------
+* Please respond to the high level points as you see fit.
+
+* Please explain the crash model.
+
+* How many labels are there in your evaluation? Would an algorithm
+  that directly considers sets of rules not be more efficient than
+  considering total and partial orders (many of them not realizable by
+  rules)?

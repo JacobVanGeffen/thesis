@@ -1,0 +1,73 @@
+\begin{algorithmic}[1]
+\algrestore{depsynth}
+
+\Function{\rulesfortest}{$\test = \langle P_\emph{initial}, P_\emph{main} \rangle$, \impl, \consist}
+    \State $\wr \gets \{w\ | \ w \in \evaluate{P_\emph{main}}{\impl} \}$
+    \State \Return $\Call{\phaseone}{\tests, [], \wr, \impl, \consist}$
+\EndFunction
+
+\vspace{0.8em}
+
+\Function{\phaseone}{\test, \ord, \wr, \impl, \consist}  \Comment{Search for total orders over writes}  \label{fig:rules:phase1}
+    \If{$\wr = \emptyset$}
+        \State $\gr \gets \{ (\ord[i], \ord[j]) \ | \ 0 \leq i < j < |\ord| \}$
+        \State \Return \Call{\phasetwo}{\tests, \gr, \impl, \consist}  \Comment{\gr is a total order; minimize it in Phase 2} \label{fig:rules:phase1tophase2}
+    \EndIf
+    \For{$w \in \wr$}
+        \State $\ord' \gets \ord + [w]$
+        \State $\wr' \gets \wr \setminus \{ w \}$
+        \State $\gr \gets \{ (\ord[i], \ord[j]) \ | \ 0 \leq i < j < |\ord| \} \, \cup$ 
+            \Statex $\hspace{6em}\{ (w_1, w_2) \ | \ w_1 \in \ord \land w_2 \in \wr \} \, \cup$ 
+            \Statex $\hspace{6em}\{ (w_1, w_2) \ | \ w_1, w_2 \in \wr \}$  \label{fig:rules:phase1angelic}
+         \If{$\neg \crashconsistentalg(\test, \Call{\rulesforgraph}{\gr}, \impl, \consist)$}  \label{fig:rules:phase1sufficient}
+            \State \textbf{continue} \label{fig:rules:phase1continue}
+        \EndIf
+        \State $\ruleset \gets \Call{\phaseone}{\test, \ord', \wr', \impl, \consist}$
+        \If{$\ruleset \neq \bot$}
+            \State \Return \ruleset
+        \EndIf
+    \EndFor
+    \State \Return $\bot$
+\EndFunction
+
+\vspace{0.8em}
+
+\Function{\phasetwo}{\test, \gr, \impl, \consist}  \Comment{Minimize graph \gr by removing individual edges}  \label{fig:rules:phase2}
+    \State $\ruleset \gets \Call{\rulesforgraph}{\gr}$
+    \If{$\neg \Call{\crashconsistentalg}{\test, \ruleset, \impl, \consist}$}  \label{fig:rules:phase2sufficient}
+        \State \Return $\bot$
+    \EndIf
+    \For{$(w_1, w_2) \in \gr$}  \Comment{Try removing each edge from \gr}  \label{fig:rules:phase2loop}
+        \State $\gr' \gets \gr \setminus \{(w_1, w_2)\}$  \label{fig:rules:phase2remove}
+        \State $\ruleset' \gets \Call{\phasetwo}{\test, \gr', \impl, \consist}$ \label{fig:rules:phase2recurse}
+        \If{$\ruleset' \neq \bot$}
+            \State \Return \ruleset'
+        \EndIf
+    \EndFor
+    \If{$\Call{Acyclic}{\ruleset}$}
+        \State \Return \ruleset \Comment{\gr makes \test crash consistent and no subgraph of \gr suffices}
+    \Else
+        \State \Return $\bot$
+    \EndIf
+\EndFunction
+
+\vspace{0.8em}
+
+\Function{\rulesforgraph}{\gr}  \Comment{Generalize a happens-before graph into dependency rules}  \label{fig:rules:rulesforgraph}
+    \State $\ruleset \gets \{\}$
+    \For{$(w_1, w_2) \in \gr$}
+        \State $\langle n_1, t_1 \rangle \gets \Call{Label}{w_1}$  \Comment{Get label $l_1 = \langle n_1, t_1 \rangle$ for write $w_1 = \texttt{write}(a_1, s_1, l_1)$}
+        \State $\langle n_2, t_2 \rangle \gets \Call{Label}{w_2}$
+        \If{$t_1 < t_2$}
+            \State $\ruleset \gets \ruleset \cup \{ \deprule{n_2}{n_1}{>} \}$  \Comment{Invert the order, as a rule $\deprule{n_a}{n_b}{p}$ says $n_a$ happens \textbf{after} $n_b$}
+        \ElsIf{$t_1 = t_2$}
+            \State $\ruleset \gets \ruleset \cup \{ \deprule{n_2}{n_1}{=} \}$
+        \Else
+            \State $\ruleset \gets \ruleset \cup \{ \deprule{n_2}{n_1}{<} \}$
+        \EndIf
+    \EndFor
+    \State \Return \ruleset
+\EndFunction 
+
+\algstore*{depsynth}
+\end{algorithmic}

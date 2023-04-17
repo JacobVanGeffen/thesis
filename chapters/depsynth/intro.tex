@@ -1,0 +1,250 @@
+\section{Introduction}
+
+% crash consistency is hard. non-determinism, reordering, consistency.
+% it's all about ordering. a high-level consistency property but low-level writes.
+
+% hard for two reasons:
+% 1. requires reasoning about non-determinism and volatile state. so either very careful global reasoning
+%    about what might be inflight at any point in the program (soft updates) or a centralized consistency
+%    mechanism like a journal that sacrifices performance to make consistency easier.
+% 2. the storage API provides no support for implementing consistency -- only provides durability
+%    mechanisms like flush, that have to be used indirectly to get consistency guarantees.
+% while some prior work improves this, still fundamentally requires the programmer to determine valid
+% and invalid orderings at the granularity of individual writes.
+
+% this paper: a new programming model for building storage systems in which a program synthesizer automatically
+% infers the necessary ordering(?) to guarantee crash consistency.
+% two parts:
+% 1. instead of programming directly against a low-level disk API, programmers instead build against
+%    a higher-level *ordering-aware buffer cache* API. requires programmer to label their writes to disk
+%    and then configure the cache with a set of *dependency rules* to realize consistency
+% 2. writing those rules is hard, so we develop a synthesizer than can automatically infer the rules
+%    necessary to guarantee a desired consistency property. synthesized from a set of examples/litmus
+%    tests. great because we can adapt to changes in functionality and in hardware.
+
+% evaluated on a production storage system. we show that we can automatically generate dependency
+% rules equivalent to the hand-written imperative implementation. also show that we can adapt to
+% changes by changing the hardware. maybe we also implement a simple journaling FS.
+
+Many applications build on storage systems
+such as file systems and key-value stores
+to reliably persist user data
+even in the face of full-system crashes (e.g., power failures).
+Guaranteeing this reliability requires the storage system to be \emph{crash consistent}:
+after a crash, the system should recover to a consistent state without losing previously persisted data.
+The state of a storage system is consistent if it satisfies the representation 
+invariants of the underlying persistent data structures (e.g., a free data block must not be linked by any file's inode).
+Crash consistency is notoriously difficult to get right~\cite{yang:explode,pillai:appcrash,zheng:torturing-db}, 
+due to performance optimizations in modern software and hardware
+that can reorder writes to disk
+or hold pending disk writes in a volatile cache.
+In normal operation, these optimizations are invisible to the user,
+but a crash can expose their partial effects, leading to 
+inconsistent states.
+
+A number of general-purpose approaches exist to implement crash consistency,
+including journaling~\cite{prabhakaran:journaling},
+copy-on-write data structures~\cite{rodeh:btrfs},
+and soft updates~\cite{ganger:soft-updates}.
+However, implementing a storage system using these approaches is still challenging for two reasons.
+First, practical storage systems combine crash consistency techniques
+with optimizations such as log-bypass writes and transaction batching to improve performance~\cite{tweedie:ext2journal}.
+These optimizations and their interactions are subtle,
+and have led to severe crash-consistency bugs
+in well-tested storage systems~\cite{lu:fsstudy,chen:dfscq}.
+Second, developers must implement their system 
+using low-level APIs provided by storage hardware and kernel I/O stacks,
+which offer no direct support for enforcing consistency properties.
+Instead they provide only durability primitives such as flushes,
+and require the developer to roll their own consistency mechanisms on top of them.
+While prior work offers testing~\cite{mohan:crashmonkey,yang:explode}
+and verification~\cite{chen:fscq,sigurbjarnarson:yggdrasil} tools for validating crash consistency,
+these tools do not alleviate the burden of implementing crash-consistent systems.
+
+This paper presents a new synthesis-aided programming model for building crash-consistent storage systems.
+% that \emph{automatically infers} the necessary write-level orderings to guarantee a desired crash consistency property.
+The programming model consists of three parts: 
+%
+a high-level storage interface based on \emph{labeled writes};
+%
+a synthesis engine for turning labeled writes and a desired crash consistency property 
+into a set of \emph{dependency rules} that writes to disk must respect; and 
+%
+a \emph{dependency-aware buffer cache} that enforces the synthesized rules at run time.
+%
+Together, these three components let developers keep their implementation free of 
+hardcoded optimizations and mechanisms for enforcing consistency. 
+%
+Instead, developers can focus on the key aspects of their storage system---functional 
+correctness, crash consistency, and performance---one at a time. 
+%
+Their development workflow consists of three steps.
+
+First, developers implement their system against a higher-level storage interface
+by providing \emph{labels} for each write their system makes to disk.
+Labels provide information about the data structure the write targets
+and the context for the write (e.g., the transaction it is part of).
+For example, a simple journaling file system might require two writes to append to the journal:
+one to append the data block to the tail of the journal (labeled \textsf{data})
+and one to update a superblock that records a pointer to that tail (labeled \textsf{superblock}).
+This higher-level interface allows the developer to assume a stronger
+\emph{angelic nondeterminism} model for crashes---%
+the system promises that crash states will \emph{always} satisfy
+the developer's crash consistency property if possible---%
+simplifying the implementation effort.\tighten
+
+Second, to make their implementation crash consistent even on relaxed storage stacks,
+the developer uses a new program synthesizer, \depsynth,
+to automatically generate \emph{dependency rules} that writes to disk must respect.
+A dependency rule uses labels to define an ordering requirement between two writes:
+writes with one label must be persisted on disk before corresponding writes with the second label.
+The \depsynth synthesizer takes three inputs: the storage system implementation,
+a desired \emph{crash consistency predicate} for disk states of the storage system
+(i.e., a representation invariant for on-disk data structures),
+and a collection of small \emph{litmus test} programs~\cite{alglave:litmus-tool,bornholt:ferrite}
+that exercise the storage system.
+Given these inputs, \depsynth searches a space of happens-before graphs
+to automatically generate a set of dependency rules
+that guarantee the crash-consistency predicate for every litmus test.
+% The developer can then supply these generated rules to their storage system.
+Although this approach is example-guided and so only guarantees crash consistency on the supplied tests,
+the dependency rule language is constrained to make it difficult to overfit to the tests,
+and so in practice the rules generalize to arbitrary executions of the storage system.
+
+Third, developers run 
+their storage system on top of a \emph{dependency-aware buffer cache}
+that enforces the synthesized dependency rules.
+For example, in a journaling file system,
+the superblock pointer to the tail of the journal must never refer to uninitialized data.
+\depsynth will synthesize a dependency rule enforcing this consistency predicate
+by saying that data writes must happen before superblock writes.
+At run time, the dependency-aware buffer cache
+enforces this rule by delaying sending writes labeled \textsf{superblock}
+to disk until the corresponding \textsf{data} write has persisted.
+The dependency-aware buffer cache is free to reorder writes in any way
+to achieve good performance on the underlying hardware
+(e.g., by scheduling around disk head movement or SSD garbage collection)
+as long as it respects the dependency rules.
+
+We evaluate the effectiveness and utility of \depsynth
+in a case study that applies it to a production key-value store
+developed by a major commercial cloud provider.%
+\footnote{Anonymized for double-blind review.}
+We show that \depsynth can rapidly synthesize dependency rules for this storage system.
+By comparing those rules to the key-value store's existing crash-consistency behavior,
+we find that \depsynth achieves similar results to rules hand-written by experts,
+and even corrects an existing crash-consistency issue in the system automatically.
+We also show that dependency rules synthesized by \depsynth
+generalize beyond the example litmus tests used for synthesis,
+and that \depsynth can be used for storage systems beyond key-value stores.
+% Finally, we show that an automated crash consistency approach
+% supports rapid iteration by using \depsynth
+% to \emph{re}-synthesize dependency rules
+% after changing the underlying storage hardware (and thus the guarantees it offers).
+
+In summary, this paper makes three contributions:
+\begin{itemize}
+\item A new programming model for building storage systems that automates the implementation of crash consistency guarantees;
+\item \depsynth, a synthesis tool that can infer the dependency rules sufficient for a storage system to be crash consistent; and
+\item An evaluation showing that \depsynth supports different storage system designs and scales to production-quality systems.
+\end{itemize}
+
+\noindent
+The remainder of this paper is organized as follows.
+\cref{s:overview} gives a walk-through of building a simple storage system with \depsynth.
+\cref{sec:problem} defines the \depsynth programming model, including labeled writes and dependency rules.
+\cref{sec:alg} describes the \depsynth synthesis algorithm for inferring dependency rules,
+and \cref{s:impl} details \depsynth's implementation in Rosette.
+\cref{sec:eval} evaluates the effectiveness of \depsynth.
+\cref{s:related} discusses related work, and \cref{s:conclusion} concludes.\tighten
+
+\if 0
+Modern storage systems rely on crash consistency to maintain data across disk crashes.
+As the number of disks used by these systems surpasses the order of hundreds and thousands,
+the likelihood of any single disk crashing increases tremendously, thus making crash
+consistency even more important. However, reasoning about the crash consistency of systems
+is not an easy task. Moreover, not all methods of achieving crash consistency are created equal.
+Journaling introduces slowdowns in the system due to duplicating writes.
+Systems using soft updates avoid write duplication by instead
+ordering writes sent to disk in such a way that all intermediate disk states are consistent.
+The downside of soft updates lies in the difficulty of producing such a correct order.
+
+Soft updates have been used in a variety of storage systems in
+order to ensure crash consistency \todo{cite}. To implement soft updates, system
+developers must correctly order disk writes in such a way that if a disk crash occurs
+at any point, the disk will be left in a consistent state. As shown in \todo{FeatherStitch},
+one way to keep track of the correct order of disk writes is to encode a set of \textit{dependencies}
+between individual disk writes. The disk is allowed to order writes in any way that
+obeys this set of dependencies.
+Since some orders can be executed more quickly than others, it is desirable to minimize
+write dependencies to only those necessary to ensure crash consistency.
+
+This paper presents a tool for automatically implementing crash consistency through soft updates
+without requiring the developer to reason about the crash states of their system. We develop
+\depsynth, a framework for synthesizing \textit{dependency rules} that generate write dependencies
+for any execution of the input system. Using \depsynth, we implement a key-value store based
+on a simplified version of \todo{ShardStore}. \depsynth synthesizes dependency rules for this
+system that generate dependencies similar to those hand-written by experts.
+% It would be nicer if I could say that we synthesized rules for several simpler key-value stores as well
+
+The dependency rules output by \depsynth are constrained by three main requirements. First, the output
+rules must ensure crash consistency for any execution of the system. More specifically, any
+order of disk writes allowed by the rules output from \depsynth should never put the system in an
+inconsistent state. Second, \depsynth should output as few rules as possible in order to satisfy the first
+constraint. The reason for this requirement is that some executing schedules for disk writes are faster than
+others. Ideally, the system has the freedom to choose any valid schedule of disk writes to execute. Third,
+the rules output by \depsynth should be acyclic. This means that the rules will never generate dependencies
+such that two disk writes depend on each other. This is important because the system may not be able to enforce
+that two writes are fully written to the disk at the same time. The next few paragraphs explain how \depsynth
+meets all three of these requirements.
+\todo{Second-to-last sentence feels weird. How to better explain the third requirement?}
+
+% TODO explain how \depsynth meets these three requirements
+The first goal of \depsynth is to output rules that are sufficient for any execution over the system. One way to
+achieve this goal would be to enumerate candidate sets of rules and check with an SMT solver that
+the rules are sufficient for any reachable disk state. However, for realistic storage systems, the space of
+reachable states is too large and complex for solvers to reason about efficiently. Instead of considering
+all reachable states of a system, we take a finite set of \textit{concrete} executions as part of the
+specification. \depsynth then synthesizes a set of dependency rules sufficient for all states reachable
+in the set of specified executions. Since our goal is for generated rules to be sufficient for all
+possible executions, we have designed the language for dependency rules in such a way that rules
+generated by \depsynth generalize to executions outside of the input set.
+
+The second goal is that output rules should be \textit{minimal} in the number of generated dependencies
+so that the storage system has the freedom to execute the most optimal valid schedule. \depsynth achieves this
+goal by splitting the rule search for a single litmus tests into two phases: graph generation and rule
+extrapolation. In the first phase, \depsynth generates a minimal dependency graph for the litmus test
+using an enumerative backtracking search. The second phase extrapolates the minimal dependency graph
+into a set of rules that generates the graph.
+% Importantly, the set of rules may generate dependencies that are not in the graph...
+
+The final goal is to generate a set of rules that is \textit{acyclic} so that any output dependency graph
+can be enforced during an actual execution as a partial order over the writes in the storage system.
+This goal is achieved through both a local backtracking strategy in the per-litmus-test graph search
+as well as the global search for rules over all litmus tests. Backtracking in the local search is
+relatively straightforward: the enumerative search over graphs for a single litmus test should backtrack
+to avoid cycles in the graph. For the global search, since rules for each litmus test are combined for a
+final output, \depsynth may
+generate conflicting rules over multiple litmus tests that only cause a cycle when combined.
+When this happens, \depsynth resolves the conflicts by generating new rules for all
+involved litmus tests.
+
+To summarize, this paper makes the following contributions:
+\begin{enumerate}
+  \item \depsynth, the first tool for synthesizing crash consistency code for storage systems
+        in the form of soft updates.
+  \item A new formalization of the \textit{dependency rule synthesis problem}. % TODO elaborate
+  \item A novel backtracking search that enables \depsynth to solve the dependency rule synthesis problem.
+  \item An evaluation that shows \depsynth can efficiently generate a set of rules that generalizes
+        to outputs outside the training set and that is comparable to expert-written crash consistency code.
+\end{enumerate}
+
+The rest of this paper is organized as follows.
+\autoref{s:overview} illustrates how developers use \depsynth to construct a basic crash consistent storage system.
+\autoref{s:problem} formalizes the dependency rule synthesis problem.
+\autoref{s:algorithm} presents the \depsynth algorithm for searching for rules over a set of litmus tests.
+\autoref{s:impl} provides implementation details.
+\autoref{s:eval} evaluates \depsynth.
+\autoref{s:related} discusses related work.
+\autoref{s:conclusion} concludes.
+\fi

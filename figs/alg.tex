@@ -1,0 +1,40 @@
+\begin{algorithmic}[1]
+\Function{\depsynthalg}{\impl, \tests, \consist}
+\State $\ruleset \gets \{\}$
+\Loop
+    \State $\test \gets \Call{NextTest}{\tests, \ruleset, \impl, \consist}$  \label{alg:depsynth:nexttest}
+    \If{$\test = \bot$}  \Comment{\ruleset makes all tests in \tests crash consistent}
+        \State \Return \ruleset
+    \EndIf
+    \State $\tests \gets \tests \setminus \test$
+    \State $\ruleset' \gets \Call{\rulesfortest}{\test, \impl, \consist}$ \label{alg:depsynth:rulesone}
+    \If{$\ruleset' = \bot$}
+        \State \Return \UNSAT  \Comment{No rules can make \test crash consistent}
+    \EndIf
+    \State $\ruleset \gets \ruleset \cup \ruleset'$ \label{alg:depsynth:add}
+    \If{$\neg \Call{Acyclic}{\ruleset}$}  \Comment{Fail if new rules create a cycle in the rule set}
+        \State \Return \UNKNOWN  \label{alg:depsynth:resolve}
+    \EndIf
+\EndLoop
+\EndFunction
+
+\vspace{0.8em}
+
+\Function{NextTest}{\tests, \ruleset, \impl, \consist}
+    \For{$\test \in \tests$}
+        \If{$\neg \Call{\crashconsistentalg}{\test, \ruleset, \impl, \consist}$}
+            \State \Return \test
+        \EndIf
+    \EndFor
+    \State \Return $\bot$
+\EndFunction
+
+\vspace{0.8em}
+
+\Function{\crashconsistentalg}{$\test = \langle P_\emph{initial}, P_\emph{main} \rangle$, \ruleset, \impl, \consist}  \Comment{Check Def.~\ref{def:crash-consistent} with an SMT solver}  \label{alg:depsynth:cc}
+    \State $d_\emph{initial} \gets \run{\evaluate{P_\emph{initial}}{\mathcal{O}}}{\vec{\top}}{d_0}$
+    \State \Return $\forall \vec{s}.\ \valid{\vec{s}}{P_\emph{main}}{R} \Rightarrow \consistent{\run{\evaluate{P_\emph{main}}{\mathcal{O}}}{\vec{s}}{d_\emph{initial}}}$
+\EndFunction
+
+\algstore{depsynth}
+\end{algorithmic}

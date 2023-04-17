@@ -20,3 +20,7 @@ out/
 # built papers
 /thesis.pdf
 /thesis.tdo
+
+# vim
+*.swp
+
