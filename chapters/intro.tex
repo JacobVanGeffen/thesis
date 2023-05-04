@@ -1,0 +1,141 @@
+\chapter{Introduction}
+
+% What is hard?
+In recent years, the development of software systems has become increasingly
+complex.
+From the construction of large production key-value stores to Linux kernel JIT compilers
+% TODO should I include these examples?
+to the design of blockchain protocols and fault-tolerent networks,
+modern systems must satisfy ever-increasing requirements on performance.
+Additonally, the
+correctness of these systems is now more important than ever. The
+afformentioned storage systems are responsible for safely storing the data
+of millions of people, while
+the incorrect behavior of in-kernel compilers can subject the tens of millions of
+Linux users to a slew of vulnerabilities.
+
+% Why is it hard?
+Modern systems developers must tackle three challenges when constructing
+systems that both meet high performance criteria and exhibit correct behavior.
+First, developers must \textbf{specify} the intended behavior of their system at a high
+level. This specification can be encoded in a variety of ways, from
+English-text design documents to formal logic specifications.
+Second, developers must \textbf{implement} their system in accordance with the defined
+specificaiton. Generally, this implementation done at a lower level than the
+specification and may contain details or optimizations not referenced by the specification.
+Third, developers must \textbf{verify} that their implementation behaves correctly 
+according to their specification. Much like the last two tasks, verification can be done
+in one of several ways, from testing to manual or automated proofs to code review.
+However, no matter the method for each of these three tasks,
+all pose a significant burden of effort to systems developers.
+
+% In order to ameliorate the burden \todo{continue} Various areas of work have
+% aimed to limit the burdens , 
+
+% How can we make it easier?
+Between these three efforts, system developers repeat encoding the semantics of
+their system: the implementation of the system must adhere to the semantics
+given by the specification, and manual verification efforts like testing again
+repeat these semantics for specific inputs to the system.
+The goal of my work is to take advantage of the overlap between these three tasks
+and reduce the burden on systems developers with \textit{program synthesis}.
+Program synthesis is an automated programming technique
+that takes as input a specification and outpus both an implementation
+as well as some certificate verifying that the implementation correctly behaves
+according to the input specification.
+This work presents new techniques that enable the construction of program
+synthesis tools for systems software, and additionally demonstrates the
+efficacy of these tools.
+
+%In the context of 
+%By doing so, synthesis eliminates the
+%effort from developers to both implement and verify their systems, requiring
+%only a specification for the system.
+
+% What will I say to demonstrate the "how"? 
+%In this work, I aim to
+%demonstrate the benefits of using program synthesis tools in order to both
+%design and implement systems software.
+
+%This work presents new techniques that enable the construction of program
+%synthesis tools for systems software, and additionally demonstrates the
+%efficacy of these tools.
+My thesis is that \textit{program
+synthesis is an effective tool for designing systems that are both correct and
+performant}.  This dissertation explores this thesis over two particular types
+of systems --- just-in-time compilers and crash consistent storage systems ---
+and demonstrates how new synthesis tools can reduce implementation and verification
+effort for developers despite the size and complexity of these systems.
+
+
+\section{Challenges}
+
+The main challenge in building any synthesis tool comes from the size of the
+search space of possible implementations.
+In order to generate verifiably correct implementations, synthesis tools both limit
+their search space and order their search to prioritize the most likely candidates.
+One common technique synthesis tools use to both limit and order the search space is
+to specialize over a particular domain.
+For example, a large body of work focuses solely on synthesizing classes of spreadsheet
+table transformations \todo{cite}.
+These tools restrict their space to sequential programs that invoke a set
+of operations over relevant to these particular transformations, and also intelligently
+order their search to prioritize candidates that are most likely desired by the synthesis
+tool user.
+% By doing so, % TODO finish this?
+Another common technique for ordering the space of candidate output programs is to
+consider the size of candidates.
+Since the number of candidate programs increases exponentially with size,
+synthesis tools often prioritize searching for smaller programs before larger ones
+(EXAMPLES\todo{Cite examples} for example).
+In general, synthesizing large complex programs is much more difficult than
+synthesizing small blocks of code.
+
+
+Unline most existing target domains for program synthesis, systems software reasons
+about multiple layers of abstraction.
+Specifically, many systems consider domain-specific language (DSL) programs as input,
+so synthesis tools for systems must reason about the execution of both input DSL programs
+and the system implementation itself.
+%these large systems often encode highly complex semantics
+%which often reason at multiple levels of abstraction.
+Additionally, systems software
+often requires a monolithic amount of code, on the order of tens of thousands
+of lines \todo{cite examples of big systems}.
+%manually generated proofs of correctness for these systems can be just as large if not
+%moreso. \todo{cite big proofs of verified OS?}
+This means that na\"ively applying existing techniques for program synthesis to generate
+systems software is infeasible.
+
+In this work, I identify two key observations that enable the creation of synthesis tools
+that effectively generate correct and performant systems software.
+First, \textbf{program decomposition} allows synthesis tools to generate smaller target programs.
+By considering systems as a conjunction of smaller pieces,
+synthesis tools can search for candidate programs that implement a single piece.
+The resulting synthesized program can be combined with either user-written code or
+other synthesized system pieces, effectively reducing the developer burden.
+% JitSynth: break up into minicompilers (TODO)
+% DepSynth: consider storage mechanism separately from crash consistency mechanism (TODO)
+Second, system-specific \textbf{metaprogram abstractions} enable synthesis tools to reason 
+about candidate programs that themselves take DSL programs as input.
+By reasoning about these simpler abstractions rather than the complex systems directly,
+synthesis tools are able to more efficiently search over candidate programs.
+% JitSynth: design metasketch to describe common minicompiler patterns (TODO)
+% DepSynth: design rules language to describe any runtime dependencies (TODO)
+In the next two sections, I describe how these observations enabled the creation of
+synthesis tools for both in-kernel JIT compliers and for crash consistent storage systems.
+
+
+%%%%%%%%%% %%%%%%%%%% %%%%%%%%%% %%%%%%%%%% %%%%%%%%%% %%%%%%%%%% %%%%%%%%%% %%%%%%%%%%
+
+\section{Synthesis for In-Kernel Compilers}
+% TODO
+% JitSynth: break up into minicompilers (TODO)
+% JitSynth: design metasketch to describe common minicompiler patterns (TODO)
+
+\section{Automatic Crash Consistency with Synthesis}
+% TODO
+% DepSynth: consider storage mechanism separately from crash consistency mechanism (TODO)
+% DepSynth: design rules language to describe any runtime dependencies (TODO)
+
+\section{Contributions}
