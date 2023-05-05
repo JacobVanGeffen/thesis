@@ -128,10 +128,51 @@ synthesis tools for both in-kernel JIT compliers and for crash consistent storag
 
 %%%%%%%%%% %%%%%%%%%% %%%%%%%%%% %%%%%%%%%% %%%%%%%%%% %%%%%%%%%% %%%%%%%%%% %%%%%%%%%%
 
-\section{Synthesis for In-Kernel Compilers}
-% TODO
+\section{Synthesis for In-Kernel JIT Compilers}
+Modern operating systems have become increasingly extensible and customizable.
+One way these systems enable customization is by
+allowing users to submit custom code for kernel execution
+written in an \textit{in-kernel DSL}.
+Initially designed for network packet filtering, 
+in-kernel DSLs like eBPF \todo{cite} enable kernel extentions
+such as performance monitoring, load balancing, and intrusion detection.\todo{cite https://ebpf.io/case-studies/}
+For performance reasons, operating systems use just-in-time (JIT) compilers
+to execute in-kernel DSL programs.
+However,
+% as mentioned previously, % TODO?
+these JIT compilers can be the source of major kernel bugs.\todo{cite}
+Moreover, writing JIT compilers can pose a substantial effort to developers,
+requiring on the order of thousands of lines of code.\todo{cite}
+
+In \cref{c:jitsynth}, I present \jitsynth, a program synthesis tool that
+automatically generates JIT compilers for in-kernel DSLs
+given a specification of the source and target language.
+Existing work has demonstrated how the correctness of JIT compilers
+can be proven manually\todo{cite},
+but the effort of such proofs is highly non-trivial.
+By synthesizing JIT compilers, developers both avoid the burden of implementing
+such systems \textit{and} can guarantee correctness
+without requiring intensive proofs.
+
 % JitSynth: break up into minicompilers (TODO)
+In order to synthesize such massive and complex systems,
+\jitsynth considers the synthesis problem as one over per-instruction compilers
+between \textit{abstract register machines} --- an abstraction over
+in-kernel DSLs and other low-level languages introduced in \cref{c:jitsynth}.
+\jitsynth decomposes the synthesis problem for per-instruction compilers
+into multiple synthesis tasks for \textit{minicompilers}
+that translate only one source instruction.% TODO include this line?
 % JitSynth: design metasketch to describe common minicompiler patterns (TODO)
+To prune and prioritize the search space for minicompilers,
+\jitsynth takes advantage of a novel \textit{compiler metasketch}
+that enables the efficient exploration of candidate minicompilers
+using off-the-shelf satisfiability solvers.
+With \jitsynth, we have synthesized three JIT compilers:
+one from eBPF to RISC-V,
+one from classic BPF to eBPF,
+and one from libseccomp to eBPF.
+Moreover, we have confirmed that the synthesized eBPF to RISC-V compiler
+lacks bugs found in the existing Linux compiler.
 
 \section{Automatic Crash Consistency with Synthesis}
 % TODO
@@ -139,3 +180,7 @@ synthesis tools for both in-kernel JIT compliers and for crash consistent storag
 % DepSynth: design rules language to describe any runtime dependencies (TODO)
 
 \section{Contributions}
+The remainder of this dissertation is broken into two chapters.
+The first presents \jitsynth, a tool for synthesizing just-in-time compilers for
+in-kernel DSLs.
+k
