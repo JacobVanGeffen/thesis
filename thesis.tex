@@ -183,35 +183,70 @@
 % TODO write acknowledgements HERE
 \chapter*{Acknowledgments}
 
-This thesis covers work done in the final year and a half of my PhD.
-The work done before then,
- largely with the Molecular Information Systems Lab at UW,
- was and is a great source of pride.
-I am very fortunate to enjoy the
- endlessly supportive mentorship of my advisor Luis Ceze,
- who is the very first person you want on your team,
- and who introduced me to
- the collaborative, cross-disciplinary environment at MISL.
+% Emina
+Over the past five years, I've had the priviledge of working with
+of Emina Torlak. She is everything I could have possibly asked for
+in a mentor. From getting into the Rosette weeds to career chats over Molly Moon's,
+she always seems to know exactly what I need to hear and when I need to hear it.
+Thanks for always believing me and keeping me moving forward.
 
-On the \egg side of things,
- I owe the all the fun and any success
- I had to the entire PLSE group.
-Thanks especially to Zach Tatlock,
- without whom PLSE would simply not be the same.
-The main component of this thesis is the \egg
- paper, and my co-authors
- in that work deserve a special shoutout for making
- that project what it is:
- Chandrakana Nandi,
- Remy Wang,
- Oliver Flatt,
- Zach Tatlock,
- and Pavel Panchekha.
+% James
+Before I ever started my PhD at UW, I saw James Bornholt give a talk at PLDI 2017
+about his work synthesizing memory models. Of course I loved the talk,
+but at the time, I had no idea how much of an impact James' work would
+have on my life. Without the groundwork of James' ridiculously prolific
+career, this thesis would not exist. As if this wasn't enough, James has
+also been an excellent mentor and friend throughout my time at UW. 
+Thanks for working with me, James.
 
-Thanks to my friends and family for
- making this journey possible and even enjoyable.
-And finally,
- thank you Sami for doing this whole thing with me.
+% Isil
+My path to writing this thesis feels like a series of insanely lucky
+happenstances. Starting my undergraduate degree at UT Austin
+the same semester that Isil Dillig became a faculty member at UT wasn't the
+first or last bit of this luck, but it certainly was one of the most impactful.
+Isil is the reason that I started my program synthesis research journey, and I
+likely never would have pursued a PhD without her guidance.
+% TODO conclude?
+
+% Collabs
+I'm extremely grateful to everyone that I've worked with during my time at UW.
+Without fail, Xi Wang always asks the most important and challenging questions,
+and I wouldn't be half the researcher I am today without him.
+Luke Nelson brought me up to speed when I started in the UNSAT group at UW,
+and for that I'll always be thankful.
+Additionally, I'd like to thank Zach Tatlock and Shane Steinert-Threlkeld
+for agreeing to be part of my thesis committee.
+Zach, thanks for making me feel at home in new, scary surroundings.
+
+% Unsat + PLSE
+I doubt I could have finished this PhD with my sanity intact without the support
+of all my friends from the UNSAT group, PLSE lab, Systems lab, and Architecture
+group. There are so many amazing people that have welcomed me into these communities,
+but especially to
+Oliver Flatt,
+Ben Kushigian,
+Katie Lim,
+Ellis Michael,
+Samantha Miller,
+Chandrakana Nandi,
+Pratyush Patel,
+Dan Petrisko,
+Sorawee Porncharoenwase,
+Max Ruttenberg,
+Gus Smith,
+Ewin Tang,
+and Max Willsey,
+thank you for making these past five years a blast.
+
+
+% Fam + Madeline
+Finally, I cannot emphasize how crucial the love and support from my family
+has been over the past five years. My parents Shiela and Steve and my brothers
+Daniel and Sammy have been a non-stop source of encouragement.
+Madeline, I'll never be able to thank you enough for sticking through this whole
+journey with me, but I will certainly try. Thank you for always being on my team.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \clearpage
 
@@ -221,13 +256,8 @@ And finally,
 \renewcommand{\chaptermark}[1]{\markboth{\sc{\chaptername\ \thechapter.\ #1}}{}}
 \renewcommand{\sectionmark}[1]{\markright{\sc{\thesection.\ #1}}{}}
 % \listoftodos
-%\input{chapters/01-intro}
-%\input{chapters/02-background}
-%\input{chapters/03-rebuilding}
-%\input{chapters/04-analyses}
-%\input{chapters/05-egg}
-%\input{chapters/06-case-studies}
-%\input{chapters/99-conclusion}
+\input{chapters/intro}
+\input{chapters/jitsynth/jitsynth}
 \input{chapters/depsynth/depsynth}
 
 \clearpage

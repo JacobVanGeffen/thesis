@@ -1,0 +1,8 @@
+benchmark,cBPF,linux-eBPF,js-eBPF-nops,js-eBPF
+chrome,268,371,1072,911
+firefox,215,326,860,535
+nacl,83,128,332,205
+openssh,39,62,156,95
+qemu,210,249,840,830
+tor,379,484,1516,1239
+vsftpd,72,101,288,183

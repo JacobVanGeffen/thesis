@@ -1,0 +1,7 @@
+Filter  Linux   Jitsynth        eBPF
+QEMU    2160    9212            1992
+Tor     3856    17672           3872
+Firefox 3056    11984           2608
+Nacl    1212    4856            1024
+OpenSSH 592     2480            496
+vsftpd  868     3884            808

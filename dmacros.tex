@@ -52,7 +52,8 @@
 % COMMANDS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %\newcommand{\toolname}{{\sc Austenite}\xspace}
 \newcommand{\depsynth}{\textsc{DepSynth}\xspace}
-\newcommand{\shardstore}{\textsc{CloudKV}\xspace}
+\newcommand{\jitsynth}{\textsc{JitSynth}\xspace}
+\newcommand{\shardstore}{\textsc{ShardStore}\xspace}
 %\newcommand{\depsynth}{{\sc DepSynth}\xspace}
 \newcommand{\kv}{storage system\xspace}
 \newcommand{\kvs}{storage systems\xspace}
@@ -96,7 +97,56 @@
 %\newcommand{\todo}[1]{\textbf{\color{red} [[#1]]}}
 
 \newcommand{\tighten}{\looseness=-1}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%% JITSYNTH %%%%%%%%%%%%%%%%%%%
+\newcommand{\jitk}{{\sc Jitk}\xspace}
+% \newcommand{\pctslowdown}{$N$}
+
+\newcommand{\imm}{\mathid{imm}}
+\newcommand{\sign}{\mathid{sign}}
+\newcommand{\pc}{\mathid{pc}}
+\newcommand{\regs}{\mathid{reg}}
+\newcommand{\mem}{\mathid{mem}}
+\newcommand{\rd}{\mathid{rd}}
+\newcommand{\rs}{\mathid{rs}}
+\newcommand{\dst}{\mathid{dst}}
+\newcommand{\src}{\mathid{src}}
+\newcommand{\off}{\mathid{off}}
+\newcommand{\pid}{\mathid{pid}}
+%\newcommand{\tvar}[1]{\makebox[.9em][r]{$#1$}}
+%\newcommand{\local}{\mathid{op}}
+\newcommand{\concat}{\oplus}
+\newcommand{\reg}[1]{R[#1]}
+%\DeclareMathOperator{\extractop}{extract}
+%\newcommand{\extract}[3]{\extractop(#1, #2, #3)}
+\DeclareMathOperator{\sexti}{sext32}
+\DeclareMathOperator{\sextll}{sext64}
+\newcommand{\arm}{\mathcal{A}}
+
+\newcommand{\Reg}{\mathid{Reg}}
+\newcommand{\Mem}{\mathid{Mem}}
+\newcommand{\PC}{\mathid{PC}}
+
+\newcommand{\CMS}{\textproc{CMS}\xspace}
+\newcommand{\Naive}{\textproc{Naive}\xspace}
+\newcommand{\RW}{\textproc{RW}\xspace}
+\newcommand{\LCS}{\textproc{PLD}\xspace}
+
+\newcommand{\Read}[1]{\mathid{Read}(#1)}
+\newcommand{\Write}[1]{\mathid{Write}(#1)}
+\newcommand{\Get}[2]{#1(#2)}
+%\newcommand{\Map}[1][]{\mathword{\mathcal{M}_{#1}}}
+
+% terminology  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newcommand{\minicompiler}{mini compiler\xspace}
+\newcommand{\Minicompiler}{Mini compiler\xspace}
+\newcommand{\MiniCompiler}{Mini Compiler\xspace}
+\newcommand{\minicompilers}{mini compilers\xspace}
+\newcommand{\Minicompilers}{Mini compilers\xspace}
+\newcommand{\MiniCompilers}{Mini Compilers\xspace}
+
+%%%%%%%%%%%%%% END JITSYNTH %%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \newcommand{\graphsuff}{\textproc{Sufficient}\xspace}
 \newcommand{\acyclic}{\textproc{Acyclic}\xspace}

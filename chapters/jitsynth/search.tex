@@ -1,0 +1,426 @@
+
+
+\section{Solving the \MiniCompiler Synthesis Problem}
+\label{s:algorithm}
+
+This section presents our approach to solving the \minicompiler synthesis
+problem defined in \autoref{s:problem}. We employ syntax-guided
+synthesis~\cite{solar-lezama:sketch} to search for an implementation of a
+\minicompiler in a space of candidate programs. Our core contribution is an
+effective way to structure this space using a \emph{compiler metasketch}. This
+section presents our algorithm for generating compiler metasketches, describes
+its key subroutines and optimizations, and shows how to solve the resulting
+sketches with an off-the-shelf synthesis engine.\tighten
+%, and highlights key details of our implementation of \jitsynth.\tighten
+
+
+\subsection{Generating Compiler Metasketches}
+
+\jitsynth synthesizes \minicompilers by generating and solving
+\emph{metasketches}~\cite{bornholt:synapse}. A metasketch describes a space of
+candidate programs using an ordered set of syntactic templates or
+\emph{sketches}~\cite{solar-lezama:sketch}. These sketches take the form of
+programs with missing expressions or \emph{holes}, where each hole describes a
+finite set of candidate completions. \jitsynth sketches are expressed in a
+\emph{host language} \host that serves both as the implementation language for
+\minicompilers and the specification language for ARMs. \jitsynth expects the
+host to provide a synthesizer for completing sketches and a symbolic evaluator
+for reducing ARM semantics to SMT constraints. \jitsynth uses these tools to
+generate optimized metasketches for \minicompilers, which we call \emph{compiler
+metasketches}.\tighten
+
+\autoref{alg:compiler-metasketch-generator} shows our algorithm for generating
+compiler metasketches. The algorithm, \CMS, takes as input an abstract source
+instruction $\iota$ for a source machine $\arm_S$, a target machine $\arm_T$,
+and a state mapping \Map from $\arm_S$ to $\arm_T$. Given these inputs, it
+lazily enumerates an infinite set of \emph{compiler sketches} that collectively
+represent the space of all straight-line bitvector programs from $\prog{\iota}$
+to $\mathid{List}(\prog{\mathcal{I}_T})$. In particular, each compiler sketch
+consists of $k$ target \emph{instruction holes}, constructed from {field holes}
+that denote bitvector expressions (over the fields of $\iota$) of depth $d$ or
+less. For each length $k$ and depth $d$, the \CMS loop generates three kinds of
+compiler sketches: the \emph{pre-load}, the \emph{read-write}, and the
+\emph{naive} sketch. The naive sketch (\autoref{s:algorithm:naive}) is the most
+general, consisting of all candidate \minicompilers of length $k$ and depth $d$.
+But it also scales poorly, so \CMS first yields the pre-load
+(\autoref{s:algorithm:pld}) and  read-write (\autoref{s:algorithm:rw}) sketches.
+As we will see later, these sketches describe a subset of the programs in the
+naive sketch, and they are designed to prioritize exploring small parts of the
+search space that are likely to contain a correct \minicompiler for $\iota$, if
+one exists.
+
+\begin{figure}[h]
+\begin{algorithmic}[1] 
+  \Function{CMS}
+    {$\iota, \arm_S, \arm_T, \Map$} \Comment{$\iota\in\mathcal{I}_S, \arm_S = (\mathcal{I}_S, \ldots)$}
+    \For{$n\in\mathbb{Z}^+$} \Comment{Lazily enumerates all compiler sketches}
+      \For{$k \in [1, n], d = n-k$} \Comment{of length $k$ and depth $d$,}
+        \State \textbf{yield} $\LCS(k,d,\iota,\arm_S,\arm_T,\Map)$ \Comment{yielding the pre-load sketch first,}
+        \State \textbf{yield} $\RW(k,d,\iota,\arm_S,\arm_T,\Map)$ \Comment{read-write sketch next, and}
+        \State \textbf{yield} $\Naive(k,d,\iota,\arm_S,\arm_T,\Map)$ \Comment{the most general sketch last.}
+      \EndFor
+    \EndFor
+  \EndFunction
+\end{algorithmic}
+\caption{Compiler metasketch for the abstract source instruction
+$\iota$, source machine $\arm_S$, target machine $\arm_T$, and state mapping
+$\mathcal{M}$ from $\arm_S$ to
+$\arm_T$.\tighten}\label{alg:compiler-metasketch-generator}
+\end{figure}
+
+\subsection{Generating Naive Sketches}\label{s:algorithm:naive}
+
+The most general sketch we consider, $\Naive(k,d,\iota,\arm_S,\arm_T,\Map)$, is
+shown in \autoref{fig:naive-sketch}. This sketch consists of $k$ instruction
+holes that can be filled with any instruction from $\mathcal{I}_T$. An
+instruction hole chooses between expressions of the form $(\mathit{op}_T, H)$,
+where $\mathit{op}_T$ is a target opcode, and $H$ specifies the field holes for
+that opcode. Each field hole is a bitvector expression (of depth $d$) over the
+fields of the input source instruction and arbitrary bitvector constants. This
+lets target instructions use the immediates and registers (modulo \Map) of the
+source instruction, as well as arbitrary constant values and register names.
+Letting field holes include constant register names allows the synthesized
+\minicompilers to use target registers unmapped by \Map as temporary, or
+scratch, storage. In essence, the naive sketch describes all straight-line
+compiler programs that can make free use of standard C arithmetic and bitwise
+operators, as well as scratch registers.\tighten 
+
+The space of such programs is intractably large, however, even for small inputs.
+For instance, it includes at least $2^{350}$ programs of length $k=5$ and depth
+$d\leq 3$ for the toy example from \autoref{s:overview}. \jitsynth therefore
+employs two effective heuristics to direct the exploration of this space toward
+the most promising candidates first, as defined by the read-write and pre-load
+sketches.\tighten 
+
+\begin{figure}
+\begin{algorithmic}[1] 
+  \Function{Naive}
+    {$k, d, \iota , \arm_S, \arm_T, \Map$} \Comment{$\iota\in\mathcal{I}_S, \arm_S = (\mathcal{I}_S, \ldots)$}
+    \State $(\mathid{op}, \mathcal{F}) \gets \iota$, $(\mathid{I}_T, \ldots) \gets \arm_T$ \Comment{Source instruction, target instructions.}
+    \State $p \gets \mathid{FreshId}()$ \Comment{Identifier for the compiler's input.}
+    \State $\mathid{body}\gets []$  \Comment{The body of the compiler is a sequence}
+    \For{$0 \leq i < k$} \Comment{of $k$ target instruction holes.}
+      \State $I \gets \{\}$  \Comment{The set $I$ of choices for a target instruction hole}
+      \For{$(\mathid{op}_T, \mathcal{F}_T)\in\mathcal{I}_T$} \Comment{includes all instructions from $\mathcal{I}_T$.} \label{li:instruction-hole}
+        \State $E \gets \{\mathid{Expr}(p.f, \Map) \,|\, f\in\mathid{dom}(\mathcal{F})\}$ \Comment{Any source field can appear in}
+        \State $H \gets \{ f\mapsto \mathid{Field}(\mathcal{F}_T(f),d,E) \,|\, f\in\mathid{dom}(\mathcal{F}_T)\} $ \Comment{a target field hole, and}\label{li:field-holes}
+        \State $I\gets I \cup \{ \mathit{Expr}((\mathid{op}_T, H), \Map) \}$ \Comment{any constant register or value.}
+      \EndFor
+      \State $\mathid{body} \gets \mathid{body} \cdot [\mathid{Choose}(I)]$ \Comment{Append a hole over $I$ to the body.}
+    \EndFor
+    \State \Return $\mathid{Expr}((\lambda p\in\prog{\iota}\, .\, \mathid{body}),\Map)$ \Comment{A \minicompiler sketch for $\iota$.}
+  \EndFunction
+\end{algorithmic}
+\caption{Naive sketch of length $k$ and maximum depth $d$ for $\iota$, $\arm_S$,
+$\arm_T$, and \Map. Here, $\mathid{Expr}$ creates an expression in the host language, 
+using \Map to map from source to target register names and memory addresses;
+$\mathid{Choose}(E)$ is a hole that chooses an expression from the set $E$; and
+$\mathid{Field}(\tau,d,E)$ is a hole for a bitvector expression of type
+$\tau$ and maximum depth $d$, constructed from arbitrary bitvector constants and
+expressions $E$.\tighten}\label{fig:naive-sketch}
+\end{figure}
+
+%bvand bvadd bvshl bvor bvxor bvlshr bvashr
+
+\subsection{Generating Read-Write Sketches}\label{s:algorithm:rw} 
+
+The read-write sketch, $\RW(k, d, \iota, \arm_S, \arm_T, \Map)$, is based on the
+observation that many practical source and target languages provide similar
+functionality, so a source instruction $\iota$ can often be emulated with target
+instructions that access the same parts of the state as $\iota$. For example,
+the \cc{addi32} instruction from eBPF reads and writes only registers (not,
+e.g., memory), and it can be emulated with RISC-V instructions that also touch
+only registers (\autoref{s:overview}). Moreover, note that the semantics of
+\cc{addi32} ignores the values of its $\mathid{src}$ and $\mathid{off}$
+fields, and that the target RISC-V instructions do the same. Based on these
+observations, our optimized sketch for \cc{addi32} would therefore consists of
+instruction holes that allow only register-register instructions, with field
+holes that exclude $\mathid{src}$ and $\mathid{off}$. We first formalize this
+intuition with the notion of \emph{read and write sets}, and then describe how \jitsynth
+applies such sets to create \RW sketches.\tighten
+
+\paragraph{Read and write sets.} 
+Read and write sets provide a compact way to summarize the semantics of an
+abstract instruction $\iota$. This summary consists of a set of \emph{state
+labels}, where a state label is one of $L_\regs$, $L_\mem$, and $L_\pc$
+(\autoref{def:state-labels}). Each label in a summary set represents a state
+component (registers, memory, or the program counter) that a concrete instance
+of $\iota$ may read or write during some execution. We compute three such sets
+of labels for every $\iota$: the read set $\Read{\iota}$, the write set
+$\Write{\iota}$, and the write set $\Write{\iota, f}$ for each field $f$ of
+$\iota$. \autoref{fig:rw-sets} shows these sets for the toy eBPF and RISC-V
+instructions.\tighten
+
+
+
+\begin{figure}\centering
+  {\small
+  \begin{tabular}{llll}
+    \toprule
+    $\iota$ & $\Read{\iota}$ & $\Write{\iota}$ & $\Write{\iota, \mathid{field}}$ \\
+    \midrule
+    \cc{addi32} & $\{L_\regs\}$ & $\{L_\regs\}$ & $\mathid{imm}$: $\{L_\regs\}$; $\mathid{off}$: $\emptyset$; $\mathid{src}$: $\emptyset$; $\mathid{dst}$: $\{L_\regs\}$ \\
+    \cc{lui} & $\{L_\regs\}$ & $\{L_\regs\}$ & $\mathid{rd}$: $\{L_\regs\}$; $\mathid{imm20}$: $\{L_\regs\}$\\
+    \cc{sb} & $\{L_\regs\}$ & $\{L_\mem\}$ & $\mathid{rs1}$: $\{L_\mem\}$; $\mathid{rs2}$: $\{L_\mem\}$; $\mathid{imm12}$: $\{L_\mem\}$ \\
+    \bottomrule\end{tabular}
+  }
+
+\caption{Read and write sets for the \cc{addi32}, \cc{lui}, and \cc{sb} instructions from \autoref{fig:lang-instrs}.}\label{fig:rw-sets}
+\end{figure}
+
+The read set $\Read{\iota}$ specifies which components of the input state may
+affect the execution of $\iota$ (\autoref{def:read-set}). For example, if
+$\Read{\iota}$ includes $L_\regs$, then some concrete instance of $\iota$
+produces different output states when executed on two input states that differ
+only in register values. 
+% More generally, $L_n \in \Read{\iota}$ means that the behavior of $\iota$ depends on the values read from the component $n$.\tighten
+%
+The write set $\Write{\iota}$ specifies which components of the output state may
+be affected by executing $\iota$ (\autoref{def:write-set}). In particular, if
+$\Write{\iota}$ includes $L_\regs$ (or $L_\mem$), then executing some concrete
+instance of $\iota$ on an input state produces an output state with different
+register (or memory) values. The inclusion of $L_\pc$ is based on a separate
+condition, designed to distinguish jump instructions from fall-through
+instructions. Both kinds of instructions change the program counter, but
+fall-through instructions always change it in the same way. So,
+$L_\pc\in\Write{\iota}$ if two instances of $\iota$ can write different values
+to the program counter.
+%
+Finally, the field write set, $\Write{\iota, f}$, specifies the parts of the
+output state are affected by the value of the field $f$; $L_n \in
+\Write{\iota, f}$ means that two instances of $\iota$ that differ only in $f$
+can produce different outputs when applied to the same input state.\tighten
+
+\jitsynth computes all read and write sets from their definitions, by using the
+host symbolic evaluator to reduce the reasoning about instruction semantics to
+SMT queries. This reduction is possible because we assume that all ARM
+interpreters are self-finitizing, as discussed in \autoref{s:overview}.
+
+\begin{definition}[State Labels]\label{def:state-labels} 
+  A \emph{state label} is an identifier $L_n$ where $n$ is a state component,
+  i.e., $n\in \{\regs,\mem,\pc\}$. We write $N$ for the set of all state
+  components, and $\mathcal{L}$ for the set of all state labels. We also use
+  state labels to access the corresponding state components:
+  $\Get{L_n}{\sigma} = n(\sigma)$ for all $n\in N$.
+\end{definition}
+
+\begin{definition}[Read Set]\label{def:read-set}
+  Let $\iota\in\mathcal{I}$ be an abstract instruction in $(\mathcal{I},
+  \Sigma, \mathcal{T}, \Phi)$. The \textup{read set} of $\iota$,
+  $\Read{\iota}$, is the set of all state labels $L_n\in\mathcal{L}$ such that 
+  $
+    \exists p\in\prog{\iota}.\, 
+    \exists L_w \in\Write{\iota}.\,
+    \exists \sigma_a, \sigma_b \in\Sigma.\,
+    (\Get{L_n}{\sigma_a} \neq \Get{L_n}{\sigma_b} \wedge 
+    (\bigwedge_{m\in N \setminus \{ n \}} \Get{L_m}{\sigma_a} = \Get{L_m}{\sigma_b}) \wedge
+    \Get{L_w}{\mathcal{T}(p,\sigma_a)} \neq \Get{L_w}{\mathcal{T}(p,\sigma_b)}.
+  $\tighten
+\end{definition}
+
+\begin{definition}[Write Set]\label{def:write-set}
+  Let $\iota\in\mathcal{I}$ be an abstract instruction in $(\mathcal{I}, \Sigma,
+  \mathcal{T}, \Phi)$. The \textup{write set} of $\iota$, $\Write{\iota}$,
+  includes the state label $L_n \in \{ L_\regs, L_\mem \}$ iff 
+  $
+    \exists p\in\prog{\iota}.\, 
+    \exists \sigma \in\Sigma.\, 
+    \Get{L_n}{\sigma} \neq \Get{L_n}{\mathcal{T}(p,\sigma)}
+  $, 
+  and it includes the state label $L_\pc$ iff 
+  $
+    \exists p_a, p_b\in\prog{\iota}.\, 
+    \exists \sigma \in\Sigma.\,
+    \Get{L_\pc}{\mathcal{T}(p_a,\sigma)} \neq \Get{L_\pc}{\mathcal{T}(p_b,\sigma)}.
+  $\tighten
+\end{definition}
+
+\begin{definition}[Field Write Set]\label{def:field-set}
+  Let $f$ be a field of an abstract instruction $\iota =
+  (\mathid{op},\mathcal{F})$ in $(\mathcal{I}, \Sigma, \mathcal{T}, \Phi)$. The
+  \textup{write set} of $\iota$ and $f$, $\Write{\iota, f}$, includes
+  the state label $L_n \in \mathcal{L}$ iff 
+  $
+    \exists p_a, p_b\in\prog{\iota}.\, 
+    \exists \sigma \in\Sigma.\ 
+    (p_a.f \neq p_b.f) \wedge
+    (\bigwedge_{g\in\mathid{dom}(\mathcal{F})\setminus\{f\}} p_a.g = p_b.g) \wedge
+    \Get{L_n}{\mathcal{T}(p_a,\sigma)} \neq \Get{L_n}{\mathcal{T}(p_b,\sigma)}
+  $, where $p.f$ denotes $F(f)$ for $p = (op, F)$. 
+\end{definition}
+
+
+
+% \begin{example}\label{ex:rw-sets}
+%   \jitsynth computes the following read and write sets of $\iota = \cc{addi32}$:
+%   $\Read{\iota} = \Write{\iota} = \Write{\iota, \mathid{dst}} = \Write{\iota,
+%   \mathid{imm}} = \{L_\regs\}$, and $\Write{\iota, \mathid{src}} \\ = \Write{\iota,
+%   \mathid{offset}} = \{\}$. The read and write sets for $\cc{lui}$ and its
+%   fields are also $\{ L_\regs \}$, while for $\iota = \cc{sb}$, we get
+%   $\Read{\iota}  = \{L_\regs \}$ and $\Write{\iota}  = \Write{\iota, f} =
+%   \{L_\mem \}$ for each field $f$ of \cc{sb}.\tighten
+% \end{example}
+
+
+
+\paragraph{Using read and write sets.}  
+
+
+Given the read and write sets for a source instruction $\iota$ and target
+instructions $\mathcal{I}_T$, \jitsynth generates the \RW sketch of length $k$
+and depth $d$ by modifying the \Naive algorithm (\autoref{fig:naive-sketch}) as
+follows. First, it restricts each target instruction hole (line
+\ref{li:instruction-hole}) to choose an instruction $\iota_T\in\mathcal{I}_T$
+with the same read and write sets as $\iota$, i.e., $\Read{\iota} =
+\Read{\iota_T}$ and  $\Write{\iota} = \Write{\iota_T}$. Second, it restricts the
+target field holes (line \ref{li:field-holes}) to use the source fields with the
+matching field write set, i.e., the hole for a target field $f_T$ uses the
+source field $f$ when $\Write{\iota_T, f_t} = \Write{\iota, f}$. For example,
+given the sets from \autoref{fig:rw-sets}, the \RW instruction holes for
+\cc{addi32} exclude \cc{sb} but include \cc{lui}, and the field holes for
+\cc{lui} use only the $\mathid{dst}$ and $\mathid{imm}$ source fields. More
+generally, the \RW sketch for \cc{addi32} consists of register-register
+instructions over $\mathid{dst}$ and $\mathid{imm}$, as intended. This sketch
+includes $2^{290}$ programs of length $k=5$ and depth $d\leq 3$, resulting in a
+$2^{60}$ fold reduction in the size of the search space compared to the \Naive
+sketch of the same length and depth. 
+
+% These restrictions capture the hypothesis that $\iota$ can be compiled to
+% $\mathcal{I}_T$ instructions that manipulate state in the same way as $\iota$.
+% This intuition, in turn, assumes that the states of the source and target
+% machines are related by a state mapping (\autoref{def:state-equiv}) rather than
+% an arbitrary equivalence relation.
+
+
+\subsection{Generating Pre-Load Sketches}\label{s:algorithm:pld} 
+
+The pre-load sketch, $\LCS(k, d, \iota, \arm_S, \arm_T, \Map)$, is based on the
+observation that hand-written JITs use macros or subroutines to generate
+frequently used target instruction sequences. For example, compiling a source
+instruction with immediate fields often involves loading the immediates into
+scratch registers, and hand-written JITs include a subroutine that generates the
+target instructions for performing these loads. The pre-load sketch shown in
+\autoref{fig:lcs-sketch} mimics this structure.\tighten 
+
+
+In particular, \LCS generates a sequence of $m$ concrete instructions that load
+the (used) immediate fields of $\iota$, followed by a sequence of $k-m$
+instruction holes. The instruction holes can refer to both the source registers
+(if any) and the scratch registers (via the arbitrary bitvector constants
+included in the \emph{Field} holes). The function
+$\mathid{Load}(\mathid{Expr}(p.f), \arm_T, \Map)$ returns a sequence of target
+instructions that load the immediate $p.f$ into an unused scratch register. This
+function itself is synthesized by \jitsynth using a variant of the \RW
+sketch.\tighten 
+
+As an example, the pre-load sketch for \cc{addi32} consists of two $\mathid{Load}$
+instructions (\cc{lui} and \cc{addiw} in the generated C code) and $k-2$
+instruction holes.  The holes choose among register-register instructions in toy
+RISC-V, and they can refer to the $\mathid{dst}$ register of \cc{addi32}, as
+well as any scratch register. The resulting sketch includes $2^{100}$ programs
+of length $k = 5$ and depth $d\leq 3$, providing a $2^{190}$ fold reduction in
+the size of the search space compared to the \RW sketch.\tighten
+
+\begin{figure}[h]
+  \begin{algorithmic}[1] 
+    \Function{PLD}
+      {$k, d, \iota, \arm_S, \arm_T, \Map$}\Comment{$\iota\in\mathcal{I}_S, \arm_S = (\mathcal{I}_S, \ldots)$}
+      \State $(\mathid{op}, \mathcal{F}) \gets \iota$, $(\mathid{I}_T, \ldots) \gets \arm_T$ \Comment{Source instruction, target instructions.}
+      \State $p \gets \mathid{FreshId}()$ \Comment{Identifier for the compiler's input source instruction.}
+      \State $\mathid{body}\gets []$  \Comment{The body of the compiler is a sequence with 2 parts:}
+      \State $\mathid{imm} \gets \{ f \,|\, \mathcal{F}(f) = \BV{k} \text{ and } \Write{\iota,f} \neq \emptyset \}$ \Comment{(1) Load each relevant}
+      \For{$f \in \mathid{imm}$} \Comment{source immediate into a free scratch register}
+        \State $\mathid{body}\gets\mathid{body}\cdot \mathid{Load}(\mathid{Expr}(p.f), \arm_T, \Map)$ \Comment{using the load pseudoinstruction.}
+      \EndFor
+      % \If{$L_\pc\in\Read{\iota}$} \Comment{If $\iota$ reads the PC, load it into a free scratch register}
+      %   \State $\mathid{body}\gets\mathid{body}\cdot \mathid{LoadPC}(\arm_T, \Map)$ \Comment{using the load PC pseudoinstruction.}
+      % \EndIf
+      \State $m \gets |\mathid{body}|$ \Comment{Let $m$ be the length of the load sequence.}
+      \If{$m\geq k$ or $m = 0$} \Return $\bot$ \Comment{Return the empty sketch if $m\not\in (0..k)$.}
+      \EndIf
+      \For{$m \leq i < k$} \Comment{(2) Create $k-m$ target instruction holes, where the set}
+        \State $I \gets \{\}$  \Comment{$I$ of choices for a target instruction hole includes}
+        \For{$\iota_T\in\mathcal{I}_T, \iota_T = (\mathid{op}_T, \mathcal{F}_T)$} \Comment{all instructions from $\mathcal{I}_T$ that read-write}  
+         \State $\mathid{rw}_T \gets  \Read{\iota_T} \times \Write{\iota_T}$ \Comment{the same state as $\iota$ or just registers.}
+          \If{$\mathid{rw}_T = \Read{\iota} \times \Write{\iota}$ or $\mathid{rw}_T \subseteq \{L_\regs\} \times \{L_\regs\}$ }
+            \State $\mathid{regs} \gets \{ f \,|\, \mathcal{F}(f) = \Reg \text{ and } \Write{\iota,f} \neq \emptyset \}$ \Comment{Any relevant}
+            \State $E \gets \{\mathid{Expr}(p.f, \Map) \,|\, f\in\mathid{regs}\}$ \Comment{source register can appear in}
+            \State $H \gets \{ f\mapsto \mathid{Field}(\mathcal{F}_T(f),d,E) \,|\, f\in\mathid{dom}(\mathcal{F}_T)\} $ \Comment{a target field hole,} 
+            \State $I\gets I \cup \{ \mathit{Expr}((\mathid{op}_T, H),\Map) \}$ \Comment{and any constant register or value.}
+          \EndIf
+        \EndFor
+        \State $\mathid{body} \gets \mathid{body} \cdot [\mathid{Choose}(I)]$ \Comment{Append a hole over $I$ to the body.}
+      \EndFor
+      % \If{$L_\pc\in\Write{\iota}$} \Comment{(3) If $\iota$ writes the PC, move a scratch register value}
+      %   \State $\mathid{body}\gets\mathid{body}\cdot \mathid{StorePC}(\arm_T, \Map)$ \Comment{into the PC using a pseudoinstruction.}
+      % \EndIf
+      \State \Return $\mathid{Expr}((\lambda p\in\prog{\iota}\, .\, \mathid{body}),\Map)$ \Comment{A \minicompiler sketch for $\iota$.}
+    \EndFunction
+  \end{algorithmic}
+  \caption{Pre-load sketch of length $k$ and maximum depth $d$ for $\iota$,
+  $\arm_S$, $\arm_T$, and \Map. The $\mathid{Load}(E, \arm_T, \Map)$ function
+  returns a sequence of target instructions that load the immediate value
+  described by the expression $E$ into an unused scratch register; see
+  \autoref{fig:naive-sketch} for descriptions of other helper
+  functions.\tighten}\label{fig:lcs-sketch}
+\end{figure}
+
+
+\subsection{Solving Compiler Metasketches}\label{s:algorithm:solving}
+
+\jitsynth solves the metasketch $\CMS(\iota, \arm_S, \arm_T, \Map)$ by applying
+the host synthesizer to each of the generated sketches in turn until a
+\minicompiler is found. If no \minicompiler exists in the search space, this
+synthesis process runs forever. To check if a sketch $\mathcal{S}$ contains a
+\minicompiler, \jitsynth would ideally ask the host synthesizer to solve the
+following query, derived from Definitions \ref{def:mini-compiler}--\ref{def:state-equiv}: 
+{\small
+\[
+    \exists C\in\mathcal{S} . \ 
+    \forall \sigma_S\in\Sigma_S,\ \sigma_T\in\Sigma_T,\ p\in\prog{\iota}. \\ 
+      \sigma_S \cong_{\Map} \sigma_T \Rightarrow
+      \arm_S(p, \sigma_S) \cong_{\Map} \arm_T(C(p), \sigma_T)
+\]}%
+But recall that the state equivalence check $\cong_{\Map}$ involves universally
+quantified formulas over memory addresses and register names. In principle,
+these innermost quantifiers are not problematic because they range over finite
+domains (bitvectors) so the formula remains decidable. In practice, however,
+they lead to intractable SMT queries. We therefore solve a stronger soundness
+query (\autoref{def:strong-mini-compiler}) that pulls these quantifiers out to
+obtain the standard $\exists\forall$ formula with a quantifier-free body. The  
+resulting formula can be solved with CEGIS~\cite{solar-lezama:sketch}, without 
+requiring the underlying SMT solver to reason about quantifiers.
+
+\begin{definition}[Strongly Sound \MiniCompiler]\label{def:strong-mini-compiler}
+  Let $\arm_S = (\mathcal{I}_S, \Sigma_S, \mathcal{T}_S, \Phi_S)$ and $\arm_T =
+  (\mathcal{I}_T, \Sigma_T, \mathcal{T}_T, \Phi_T)$ be two abstract register
+  machines, $\cong_{\Map}$ an injective state equivalence relation on their
+  states $\Sigma_S$ and $\Sigma_T$, and $C: \prog{\iota} \rightarrow
+  \mathid{List}(\prog{\mathcal{I}_T})$ a function for some
+  $\iota\in\mathcal{I}_S$. We say that $C$ is a \textup{strongly sound
+  \minicompiler} for $\iota_{\Map}$ with respect to $\cong$ iff
+  \begin{align*}\small
+    & \forall \sigma_S\in\Sigma_S,\ \sigma_T\in\Sigma_T,\ p\in\prog{\iota}, \
+    a\in\mathid{dom}(\mem(\sigma_S)),\ r\in\mathid{dom}(\regs(\sigma_S)). \\ 
+    & \sigma_S \cong_{\Map,a,r} \sigma_T \Rightarrow
+       \arm_S(p, \sigma_S) \cong_{\Map,a,r} \arm_T(C(p), \sigma_T)
+\end{align*}
+where $\cong_{\Map,a,r}$ stands for the $\cong_{\Map}$ formula with $a$ and $r$
+as free variables. 
+  \end{definition} 
+
+The \jitsynth synthesis procedure is sound and complete with respect to this
+stronger query (\autoref{thm:synthesis-soundness-and-completeness}). The proof
+follows from the soundness and completeness of the host synthesizer, and the
+construction of the compiler metasketch. We discharge this proof using Lean theorem prover~\cite{moura:lean}.
+
+\begin{theorem}[Strong soundness and completeness of \jitsynth]\label{thm:synthesis-soundness-and-completeness}
+  Let $\mathcal{C} = \CMS(\iota, \arm_S, \arm_T, \Map)$ be the compiler
+  metasketch for the abstract instruction $\iota$, machines $\arm_S$ and
+  $\arm_T$, and the state mapping $\Map$. If \jitsynth terminates and returns a
+  program $C$ when applied to $\mathcal{C}$, then $C$ is a strongly sound
+  \minicompiler for $\iota$ and $\arm_T$ (soundness). If there is a strongly
+  sound \minicompiler in the most general search space $\{\Naive(k, d, \iota,
+  \arm_S, \arm_T, \Map) \,|\, k, d\in \mathbb{N}\}$, then \jitsynth will terminate on
+  $\mathcal{C}$ and produce a program (completeness). 
+\end{theorem}

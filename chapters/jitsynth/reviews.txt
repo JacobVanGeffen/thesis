@@ -1,0 +1,208 @@
+----------------------- REVIEW 1 ---------------------
+SUBMISSION: 186
+TITLE: Synthesizing JIT Compilers for In-Kernel DSLs
+AUTHORS: Jacob Van Geffen, Luke Nelson, Isil Dillig, Xi Wang and Emina Torlak
+
+----------- Overall evaluation -----------
+SCORE: 2 (accept)
+----- TEXT:
+This paper describes a technique and tool for synthesizing a JIT compiler that is verified (using SMT) to produce target code functionally equivalent to the input source code. Specifically, this approach is instantiated for three language pairs: eBPF to RISC-V, classic BPF to eBPF, and libseccomp to eBPF.
+
+The core technique used is to encode an interpreter for both the source and target languages in a solver-assisted implementation language (Rosette in this case), and then use a custom SMT-assisted algorithm to search for target programs that have semantics equivalent to the source program. By assuming that both the source and target languages are abstract register machines, the authors can reduce the problem to that of constructing a compiler for each source instruction independently.
+
+Using this approach, they are able to emit C programs that implement JIT compilers for the three pairs of languages listed above. These C implementations are of a form suitable for in-kernel execution and perform only somewhat worse than hand-written (and previously buggy) manual implementations.
+
+Most of the ideas in this paper aren't radically new, but it provides a nice, practical demonstration of their effectiveness, and suggests where some future research might most fruitfully focus. In particular:
+
+* This is a nice demonstration of how a solver-assisted language such as Rosette can provide a platform that makes it straightforward to experiment with real-world languages such as BPF and RISC-V, and to generate practical implementations. (Relatedly, it might be nice to know how complex the interpreters are, and how long they took to write. Making the code publicly available would be even better.)
+
+* The techniques of read-write sketches and pre-load sketches used to accelerate the synthesis seem interesting on their own, and similar ideas might be applicable to other synthesis systems. Relatedly, I suspect many similar constraints to limit the specific instructions that may be applicable in a specific instance could probably be derived (both for this specific instance an for other synthesis tools). I have a strong hunch that this paper has not reached anywhere near the limit of what such heuristics could do to accelerate the synthesis process.
+
+There are a few downsides of the paper, as currently presented, as well:
+
+* The approach doesn't yet scale up very well. Taking 44h to generate an implementation is a long time (though still viable in some situations). That's definitely in line with the state of the art, however, and future research in speeding up synthesis could very likely complement the approaches presented here.
+
+* I have a strong suspicion that it's possible to achieve closer to the performance of hand-written code. Perhaps combining these techniques with peephole superoptimizers would help. Alternatively, including a cost metric directly in the synthesis algorithm used here could help (though may make the scalability issues even worse).
+
+* As hinted at above, there's no indication that the code will be made publicly available, for others to replicate experiments, extend the techniques, or simply understand the approach better. It would be great if it were available!
+
+Neither of these issues significantly detract from the work, as-is. They're likely just ways similar work could be even better in the future.
+
+
+----------------------- REVIEW 2 ---------------------
+SUBMISSION: 186
+TITLE: Synthesizing JIT Compilers for In-Kernel DSLs
+AUTHORS: Jacob Van Geffen, Luke Nelson, Isil Dillig, Xi Wang and Emina Torlak
+
+----------- Overall evaluation -----------
+SCORE: 2 (accept)
+----- TEXT:
+This paper describes a method for synthesising single-step compilers
+for use in the Linux kernel to compile DSLs like eBPF. The approach
+requires the user to supply an interpreter for the DSL and the target
+CPU (the running example in the paper uses eBPF as the DSL and RISC-V
+as the target CPU), then symbolically executes the interpreters & uses
+sygus to synthesis the compiler. The main technical "trick" is to
+synthesise a compiler for each instruction in the DSL by itself, and
+to compile a whole DSL program by concatenating the translations of
+each of its instructions. The authors also describe two optimisations
+that make the approach tractable.
+
+The paper is nicely written, the problem being solved is important
+(because bugs in in-kernel DSL compilers can lead to security
+vulnerabilities) and the method proposed to solve the problem seems
+effective. I like that the authors have identified a good use for
+synthesis (JIT compilation of eBPF and similar in-kernel DSLs). I also
+like that they've found useful optimisations (read-write sets and
+pre-loading) that work well for the class of programs they're
+synthesising. The optimisations are inspired by their domain knowledge
+of what good solutions to this class of synthesis problem are likely
+to look like, and they don't compromise the soundness of the
+method. It's also very surprising that a compiler which translates a
+single instruction at a time can be at all effective at generating
+reasonably fast code, so that's nice as well.
+
+I have a couple of comments though:
+
+- On page 3 you say that the compiler supports 87 out of 102 eBPF
+  instructions -- why is that and is this enough for the compiler to
+  be useful? The experiments section does elaborate on this a bit
+  (e.g. saying that the function call operation isn't handled), but
+  I'd like to have an indication of how many real eBPF programs
+  require just those 87 instructions (for instance, how many of your
+  test programs used an instruction you didn't handle?)
+
+- Page 8: the notation for comparing the size of states is
+  confusing. You write | \sigma_i | = | \sigma_j |, which to me looks
+  like i and j are indexing \sigma i.e. "the size of the i'th element
+  of the tuple sigma is equal to the size of the j'th element of
+  sigma". This might be clearer if you said something like "Two states
+  \sigma_i and \sigma_j have the same size if...".
+
+- Page 10: "Let M be a state mapping... from \Sigma_S and \Sigma_T" --
+  I think this should be "Let M be a state mapping... from \Sigma_S to
+  \Sigma_T"
+
+- Page 12: you say that the sketch for addi32 includes 2^350 programs,
+  but if I've understood correctly that number seems far too low. For
+  example, if the programs could only use lui, and the imm20 operand
+  for lui can contain a tree of depth <= 3, and imm20's type is a
+  20-bit bitvector constant (this is an assumption, it's not totally
+  clear from the text), then just looking at trees of depth exactly 3
+  whose leaves are all 20-bit bitvector constants, each instruction
+  has 2^2 * 20 = 80 bits just for the constants in the leaves, and we
+  have 5 instructions for a total of 5 * 80 = 400 bits of
+  constants. Already that gives 2^400 possible programs, even before
+  we consider different shaped trees or any other instructions. Am I
+  missing something obvious here?
+
+- Page 13: "L_n \in Write(\iota, f)..." -- you haven't introduced the
+  notation L_n here, so it's unclear what this sentence means. Also
+  when taken at face value, this sentence seems to just be saying that
+  if Write(\iota, f) is non-empty then \iota's output can depend on
+  the value of f, but that the actual contents of Write(\iota, f)
+  doesn't matter (i.e. it doesn't matter whether it's L_reg, L_mem or
+  L_pc).
+
+- Page 13: I think Definition 8 (read set) is wrong, or at least
+  doesn't match my understanding of read set introduced in the prose
+  of the paper. For example, imagine an instruction nop which does
+  nothing (i.e. \forall \sigma . T(nop, \sigma) = \sigma), and two
+  states \sigma_a with register r0 = 0, and \sigma_b with r0 = 1 (but
+  otherwise identical to \sigma_a). This pair of states satisfies
+  L_reg(\sigma_a) != L_reg(\sigma_b) /\ L_mem(\sigma_a) =
+  L_mem(\sigma_b) /\ L_pc(\sigma_a) = L_pc(\sigma_b), but trivially
+  T(nop, \sigma_a) != T(nop, \sigma_b) (since T(nop, \sigma) = T(nop,
+  \sigma) and \sigma_a != \sigma_b). So according to definition 8,
+  L_reg \in Read(nop) (and similarly L_mem and L_pc are also in
+  Read(nop)). Consequently, definition 8 would seem to say that
+  _every_ instruction p has read set {L_reg, L_mem, L_pc} which I
+  don't think is what you want. 
+
+- Page 14: I also think that definition 9 for the write set L_pc is
+  wrong -- by a similar argument to the above, L_pc seems to be in the
+  write set for nop, which seems wrong. I think this might be easier
+  to fix though -- you could say "\exists p_a, p_b . \exists \sigma
+  . L_pc(T(p_a, \sigma)) != L_pc(T, p_b, \sigma))"
+
+- Page 16: is strong soundness equivalent to soundness?  Are there any
+  compilers that are sound but not strongly sound? If so, a brief
+  explanation of how this can happen would be nice, along with an
+  intuition for how much we're losing by going with strong soundness,
+  i.e. how many sound compiler will we miss by insisting on strong
+  soundness? As I say though, it looks to me like every sound compiler
+  is strongly sound.
+
+- Page 18: I felt like the performance claims here are a little shaky
+-- a 2.28x slowdown is fairly significant, so it's a bit strong to say
+that "the performance is similar to the existing Linux compiler". I
+think the claims that the performance is similar to the Linux compiler
+might be easier to justify if you can cite something about the
+performance requirements for this kind of jit'd eBPF code (e.g. what's
+the time budget for some particular eBPF filter running in production
+somewhere & how far below that budget is the current Linux compiler?
+Would it be feasible for, say, Google or AWS to use your JIT in
+production, or is the 2.28x slowdown too expensive?)
+
+For clarity though, I think the comments above are actually pretty
+minor (I don't believe there are fundamental technical problems, just
+that the presentation could be improved a bit).
+
+I'd also like to know if you tried a couple of other things:
+
+* Trying to synthesise compilers that don't use bitvector constants
+  (because those blow up the search space massively), or that use
+  small constants (e.g. a couple of bits each) as one of your
+  intermediate sketches.
+
+* Trying to generate mini-compilers for common sequences of
+  instructions, or trying to generate a peephole optimiser for some
+  common constructs to run on the JIT'd code, which might improve
+  performance a bit.
+
+
+----------------------- REVIEW 3 ---------------------
+SUBMISSION: 186
+TITLE: Synthesizing JIT Compilers for In-Kernel DSLs
+AUTHORS: Jacob Van Geffen, Luke Nelson, Isil Dillig, Xi Wang and Emina Torlak
+
+----------- Overall evaluation -----------
+SCORE: 1 (weak accept)
+----- TEXT:
+This paper presents JitSynth, a tool for synthesizing verified JIT compilers
+for in-kernel DSLs. The tool implements the following strategy: given
+interpreters for the source DSL and the target ISA, it builds one verified JIT
+compiler for each instruction. The tool is shown to be applied to build a JIT
+from eBPF to RISC-V. 
+
+I enjoyed reading this paper, which seemed thorough and well-written to me. I
+appreciated the effort made by the authors to place their work within a wider,
+practical context. This helped me invest in reading the theoretical development
+in the paper.
+
+Whilst I do not think that those automatically generated JITs will replace the
+ones written by hand in the near future, I do believe that one can make
+immediate use of them as a way to check the correctness of the hand-written
+ones.
+
+
+----------------------- REVIEW 4 ---------------------
+SUBMISSION: 186
+TITLE: Synthesizing JIT Compilers for In-Kernel DSLs
+AUTHORS: Jacob Van Geffen, Luke Nelson, Isil Dillig, Xi Wang and Emina Torlak
+
+----------- Overall evaluation -----------
+SCORE: 2 (accept)
+----- TEXT:
+This paper described an interesting approach JITSYNTH for sythesizing a JIT compiler for a source in-kernal DSL (Domain Specific Language) and a target in-kernal DSL, and illustrated how this is done using eBPF to RISC-V as an example. The auto-generated compiler shows a 1.82x slowdown in average comparing to a recently developed Linux JIT but guarantees correctness by consutrction, which is important for security applications. The key idea is a per-instruction synthesis based on a formulation of abstract register machine, and a concept of compiler metasketch to constrain search-space for per-instruction mini-compilers make the synthesis much more efficient. 
+
+The paper is very well written in all aspects, formal treatment, algorithm and implementation, and a simple but very helpful example, experiment results and comparison to other work. I enjoyed reading the paper.
+
+A few suggestions:
+1) It would be interesting to compare and combine this work with Ironclad Apps which automatically ensures compile correctness and end-to-end security guarantee.
+2) How easy is it to extend the compiler to handle dynamic register allocation? 
+3) You mentioned a way to use pre-defined micros/subroutines as a way to simplify compilation of commonly used and/or complex instructions. Should these micros/subroutines be verified for correctness and security?
+4) Although mini-compiler generation can be fully automated, there are situations where it will be useful for the compiler developer to interact with the synthesis tool and guide the generation, e.g., for complex instructions and/or for performance optimization.
+
+
+------------------------------------------------------

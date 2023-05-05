@@ -1,0 +1,7 @@
+Filter  Linux   Jitsynth        Interpreter
+QEMU    6       4               76
+Tor     4       3               58
+Firefox 4       11              75
+Nacl    5       13              63
+OpenSSH 3       10              72
+vsftpd  3       2               60

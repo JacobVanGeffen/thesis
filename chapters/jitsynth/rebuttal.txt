@@ -1,0 +1,95 @@
+We thank the reviewers for their insightful feedback. We will use it to revise
+the paper. Below, we answer the questions from each of the reviews.
+
+---R1---
+
+> Future research in speeding up synthesis could very likely complement the
+  approaches presented here. ... Perhaps combining these techniques with
+  peephole superoptimizers would help.
+
+Yes, we also believe that these are promising directions for future work, and
+that they can help improve the performance of both the synthesis process and the
+synthesized JITs.
+
+> It would be great if [the code] were [publicly] available.
+
+We plan to submit an artifact if the paper is accepted. We will
+also make the code and all of our benchmarks publicly available.
+
+---R2---
+
+> Why [87 out of 102 eBPF instructions] enough for the compiler to
+  be useful? ... How many real eBPF programs require just those 87 instructions
+  (how many of your test programs used an instruction you didn't handle?)
+
+These 87 instructions cover 228/244 (~93%) of the eBPF programs in the
+test suite in the Linux kernel (lib/test_bpf.c). They are also sufficient
+to run all the application benchmarks from the Jitk project (Fig. 7). We
+will clarify this in the revision.
+
+> Page 12 [says] that the sketch for addi32 includes 2^350 programs,
+  but ... that number seems far too low.
+
+Yes, 2^350 is much lower than the number of all programs at this tree depth and
+program length. We got this lower number by including some simple optimizations
+in the naive sketch, such as reusing symbolic constants.
+
+> Bugs in Definitions 8 and 9.
+
+Yes, these are indeed bugs in the definitions; thanks for catching them!  The
+implementation matches the intuition provided in the text, and we will fix the
+definitions accordingly.
+
+> Is strong soundness equivalent to soundness?  Are there any compilers that are
+  sound but not strongly sound? It looks ... like every sound compiler is
+  strongly sound.
+
+This is a great question. While the logical formulas for soundness and strong
+soundness aren't equivalent, we could not think of any case in which a compiler
+is sound but not strongly sound. For that reason, we also strongly suspect that
+using strong soundness won't miss (m)any real compilers.
+
+> A 2.28x slowdown is fairly significant, so it's a bit strong to say
+that "the performance is similar to the existing Linux compiler".
+
+Agreed, we will tone down this claim. This kind of slowdown would be okay
+for some eBPF programs (e.g., for system-call filtering), but not for
+high-performance network filtering. For the latter, it would be necessary
+to get the performance on par with that of the hand-written compiler.
+
+> [Did you try] to synthesise compilers that don't use bitvector constants
+  ... or that use small constants ... as one of your intermediate sketches?
+
+> [Did you try] to generate mini-compilers for common sequences of
+  instructions, or ... a peephole optimiser for some common constructs?
+
+These are great suggestions. While we haven't tried them, we believe that they
+would improve synthesis performance as well as the performance of the generated
+code.
+
+---R3---
+
+Thanks for the review! We agree that more work is needed before automatically
+generated JITs can replace the ones written by hand.
+
+---R4---
+
+> How easy is it to extend the compiler to handle dynamic register allocation?
+
+This would be quite difficult, as it breaks our core assumption that a static
+register mapping exists from the source to target language, which is a common
+practice for in-kernel JITs.
+
+> You mentioned a way to use pre-defined micros/subroutines as a way to simplify
+  compilation of commonly used and/or complex instructions. Should these
+  micros/subroutines be verified for correctness and security?
+
+These pre-defined macros are also synthesized by JitSynth, and they are verified as
+part of the synthesis process. We will clarify this in any future revisions.
+
+>  It would be interesting to compare and combine this work with Ironclad Apps
+   ... and [allow] the compiler developer to interact with the synthesis tool and
+   guide the generation.
+
+We agree that these are interesting directions for future work; thanks for the
+suggestions!

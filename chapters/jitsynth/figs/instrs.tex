@@ -1,0 +1,67 @@
+\begin{tabular}{llll}
+
+\toprule
+\multicolumn{2}{l}{instruction} & description & semantics
+\\
+
+\midrule
+
+\multicolumn{2}{l}{eBPF (subset):}
+
+\\
+& \cc{addi32}\ $\dst, \mathit{imm32}$
+& 32-bit add (high 32 bits cleared)
+& $\reg{\dst} \leftarrow 0^{32} \concat (\extract{31}{0}{\reg{\dst}} + \mathit{imm32})$
+
+\\
+
+\midrule
+
+\multicolumn{2}{l}{RISC-V (subset):}
+\\
+& \cc{lui}\ $\rd, \mathit{imm20}$
+& load upper immediate
+& $\reg{\rd} \leftarrow \sextll(\mathit{imm20} \concat 0^{12})$
+
+\\
+
+& \cc{addiw}\ $\rd, \rs, \mathit{imm12}$
+& 32-bit register-immediate add
+& $\reg{\rd} \leftarrow \sextll(\extract{31}{0}{\reg{\rs}} + \sexti(\mathit{imm12}))$
+
+\\
+
+& \cc{add}\ $\rd, \mathit{rs1}, \mathit{rs2}$
+& register-register add
+& $\reg{\rd} \leftarrow \reg{\mathit{rs1}} + \reg{\mathit{rs2}}$
+
+\\
+
+& \cc{slli}\ $\rd, \rs, \mathit{imm6}$
+& register-immediate left shift
+& $\reg{\rd} \leftarrow \rs\ \texttt{<<}\ (0^{58} \concat \mathit{imm6})$
+
+\\
+
+& \cc{srli}\ $\rd, \rs, \mathit{imm6}$
+& register-immediate logical right shift
+& $\reg{\rd} \leftarrow \rs\ \texttt{>>}\ (0^{58} \concat \mathit{imm6})$
+
+\\
+
+& \cc{lb}\ $\rd, \rs, \mathit{imm12}$
+& load byte from memory
+& $\reg{\rd} \leftarrow \sextll(M[\reg{\rs} + \sextll(\mathit{imm12})])$
+
+\\
+
+& \cc{sb}\ $\mathit{rs1}, \mathit{rs2}, \mathit{imm12}$
+& store byte to memory
+& $M[\reg{\mathit{rs1}} + \sextll(\mathit{imm12})] \leftarrow \extract{7}{0}{\reg{\mathit{rs2}}} $
+
+\\
+
+\bottomrule
+
+\end{tabular}
+

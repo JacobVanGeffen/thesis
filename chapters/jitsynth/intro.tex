@@ -1,0 +1,130 @@
+Modern operating systems (OSes) can be customized with user-specified programs
+that implement functionality like system call whitelisting, performance
+profiling, and power management~\cite{engler:vcode,fleming:ebpf,mccanne:bpf}.
+For portability and safety, these programs are written in restricted
+domain-specific languages (DSLs), and the kernel executes them via
+interpretation and, for better performance, just-in-time (JIT) compilation. The
+correctness of in-kernel interpreters and JITs is crucial for the reliability
+and security of the kernel, and bugs in their implementations have led to
+numerous critical issues and patches~\cite{gpz:1454,paul:cve-2020-8835}.
+More broadly, embedded DSLs are
+also used to customize---and compromise~\cite{blazakis:jit-spraying,kocher:spectre}---other low-level software, such as font
+rendering and anti-virus engines~\cite{chen:vmsec}. Providing formal guarantees
+of correctness for in-kernel DSLs is thus a pressing practical and research
+problem with applications to a wide range of systems software.\tighten
+
+Prior work has tackled this problem through interactive theorem proving. For
+example, the Jitk framework~\cite{wang:jitk} uses the Coq interactive theorem
+prover~\cite{coq} to implement and verify the correctness of a JIT compiler for
+the classic Berkeley Packet Filter (BPF) language~\cite{mccanne:bpf} in the
+Linux kernel. But such an approach presents two key challenges. First, Jitk
+imposes a significant burden on DSL developers, requiring them to implement both
+the interpreter and the JIT compiler in Coq, and then manually prove the
+correctness of the JIT compiler with respect to the interpreter. Second, the
+resulting JIT implementation is extracted from Coq into OCaml and cannot be run
+in the kernel; rather, it must be run in user space, sacrificing performance and
+enlarging the trusted computing base (TCB) by relying on the OCaml runtime as
+part of the TCB\@.\tighten
+
+This paper addresses these challenges with \jitsynth, the first tool for
+synthesizing verified JIT compilers for in-kernel DSLs. \jitsynth takes as input
+interpreters for the source DSL and the target instruction set architecture
+(ISA), and it synthesizes a JIT compiler that is guaranteed to transform each
+source program into a semantically equivalent target program. Using \jitsynth,
+DSL developers write no proofs or compilers.
+Instead, they write the semantics of the source and target
+languages in the form of interpreters and a mapping from source to target states,
+which \jitsynth trusts to be correct. The
+synthesized JIT compiler is implemented in C; thus, it can run directly in the
+kernel.\tighten
+
+At first glance, synthesizing a JIT compiler seems intractable. Even the simplest
+compiler contains thousands of instructions, whereas existing synthesis
+techniques scale to tens of instructions. To tackle this problem in our setting,
+we observe that in-kernel DSLs are similar to ISAs: both take the form of
+bytecode instructions for an \emph{abstract register machine}, a simple virtual
+machine with a program counter, a few registers, and limited memory
+store~\cite{wang:jitk}. We also observe that in practice, the target machine has
+at least as many resources (registers and memory) as the source machine;
+and that JIT compilers for such abstract register machines
+perform register allocation statically at compile time.
+%
+Our main insight is that we can exploit these properties to make synthesis
+tractable through \emph{decomposition} and \emph{prioritization}, while
+preserving soundness and completeness.\tighten
+
+\jitsynth works by decomposing the JIT synthesis problem into the problem of
+synthesizing individual \emph{\minicompilers} for every instruction in the
+source language. Each \minicompiler is synthesized by generating a
+\emph{compiler metasketch}~\cite{bornholt:synapse}, a set of ordered sketches
+that collectively represent \emph{all} instruction sequences in the target
+ISA\@. These sketches are then solved by an off-the-shelf synthesis tool based
+on reduction to SMT~\cite{torlak:rosette}. The synthesis tool ensures that the
+target instruction sequence is semantically equivalent to the source
+instruction, according to the input interpreters.  The order in which the
+sketches are explored is key to making this search practical, and \jitsynth
+contributes two techniques for biasing the search towards tightly constrained,
+and therefore tractable, sketches that are likely to contain a correct program. 
+
+First, we observe that source instructions can often be implemented with target
+instructions that access the same parts of the state (e.g., only registers).
+Based on this observation, we develop \emph{read-write sketches}, which restrict
+the synthesis search space to a subset of the target instructions, based on a
+sound and precise summary of their semantics. Second, we observe that
+hand-written JITs rely on pseudoinstructions to generate common target
+sequences, such as loading immediate (constant) values into registers. We use
+this observation to develop \emph{pre-load sketches}, which employ synthesized
+pseudoinstructions to eliminate the need to repeatedly search for common target
+instruction subsequences.   
+
+We have implemented \jitsynth in Rosette~\cite{torlak:rosette} and used it to
+synthesize JIT compilers for three widely used in-kernel DSLs. As our main case
+study, we used \jitsynth to synthesize a RISC-V~\cite{riscv:isa} compiler for
+extended BPF~(eBPF)~\cite{fleming:ebpf}, an extension of classic
+BPF~\cite{mccanne:bpf}, used by the Linux kernel. Concurrently with our work,
+Linux developers manually built a JIT compiler for the same source and target
+pair, and a team of researchers found nine correctness bugs in that compiler
+shortly after its release~\cite{nelson:serval}. In contrast, our JIT compiler is
+verified by construction; it supports 87 out of 102 eBPF instructions and passes
+all the Linux kernel tests within this subset, including the regression tests
+for these nine bugs. Our synthesized compiler generates code that is
+$\EbpfInterpSpeedup\times$ faster than interpreted code and
+$\EbpfCompilerSlowdown\times$ times slower than the code generated by the Linux
+JIT\@. We also used  \jitsynth to synthesize a JIT from
+libseccomp~\cite{edge:libseccomp}, a policy language for system call
+whitelisting, to eBPF, and a JIT from classic BPF to eBPF\@. The synthesized
+JITs avoid previously found bugs in the existing generators for these source
+target pairs, while incurring, on average, a
+$\CbpfSlowdown$--$\LibseccompSlowdown\times$ slowdown in the performance of the
+generated code.\tighten
+
+
+To summarize, this paper makes the following contributions:
+\begin{enumerate}
+    \item \jitsynth, the first tool for synthesizing verified JIT compilers for
+    in-kernel DSLs, given the semantics of the source and target languages as
+    interpreters.\tighten
+    \item A novel formulation of the JIT synthesis problem as one of
+    synthesizing a per-instruction compiler for \emph{abstract register
+    machines}.\tighten
+    \item A novel \emph{compiler metasketch} that enables \jitsynth to solve the JIT
+    synthesis problem with an off-the-shelf synthesis engine.
+    \item An evaluation of \jitsynth's effectiveness, showing that it can
+    synthesize verified JIT compilers for three widely used in-kernel DSLs.
+\end{enumerate}
+
+The rest of this paper is organized as follows.
+%
+\autoref{s:overview} illustrates \jitsynth on a small example.
+%
+\autoref{s:problem} formalizes the JIT synthesis problem for in-kernel DSLs.
+%
+\autoref{s:algorithm} presents the \jitsynth algorithm for generating and
+solving compiler metasketches.
+%
+\autoref{s:impl} provides implementation details.
+%
+\autoref{s:eval} evaluates \jitsynth.
+%
+\autoref{s:related} discusses related work.
+\autoref{s:conclusion} concludes.\tighten

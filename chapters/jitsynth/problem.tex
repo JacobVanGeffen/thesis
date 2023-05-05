@@ -1,0 +1,193 @@
+\section{Problem Statement}\label{s:problem}
+
+This section formalizes the compiler synthesis problem for in-kernel DSLs. We
+focus on JIT compilers, which, for our purposes, means one-pass
+compilers~\cite{engler:vcode}. To start, we define \emph{abstract register
+machines} as a way to specify the syntax and semantics of in-kernel languages.
+Next, we formulate our compiler synthesis problem as one of synthesizing a set
+of sound \emph{\minicompilers} from a single source instruction to a sequence of
+target instructions. Finally, we show that these \minicompilers compose into a
+sound JIT compiler, which translates every source program into a semantically
+equivalent target program.\tighten 
+
+
+\paragraph{Abstract register machines.}
+
+An abstract register machine (ARM) provides a simple interface for specifying
+the syntax and semantics of an in-kernel language. The syntax is given as a set
+of {abstract instructions}, and the semantics is given as a {transition
+function} over instructions and machine {states}. 
+
+An \emph{abstract instruction} (\autoref{def:instruction}) defines the name
+(\mathid{op}) and type signature ($\mathcal{F}$) of an operation in the
+underlying language. For example, the abstract instruction $(\mathid{addi32}, r
+\mapsto \Reg, imm32 \mapsto \BV{32})$ specifies the name and signature of the
+\texttt{addi32} operation from the eBPF language
+(\autoref{fig:lang-instrs}). Each abstract instruction represents the (finite)
+set of all \emph{concrete instructions} that instantiate the abstract
+instruction's parameters with values of the right type. For example,
+$\cc{addi32}\, 0, 5$ is a concrete instantiation of the abstract instruction for
+\cc{addi32}. In the rest of this paper, we will write ``instruction'' to mean a
+concrete instruction.\tighten
+
+\begin{definition}[Abstract and Concrete Instructions]\label{def:instruction}
+  An \textup{abstract instruction} $\iota$ is a pair $(\mathid{op}, \mathcal{F})$ where
+  \mathid{op} is an opcode and $\mathcal{F}$ is a mapping from \emph{fields}
+  to their \emph{types}. Field types include \Reg, denoting register names, and
+  \BV{k}, denoting $k$-bit bitvector values. The abstract instruction $\iota$
+  represents all \textup{concrete instructions} $p = (\mathid{op}, F)$ with the
+  opcode \mathid{op} that bind each field $f\in \mathid{dom}(\mathcal{F})$ to a
+  value $F(f)$ of type $\mathcal{F}(f)$. We write $\prog{\iota}$ to denote the
+  set of all concrete instructions for $\iota$, and we extend this notation to
+  sets of abstract instructions in the usual way, i.e.,
+  $\prog{\mathcal{I}}=\bigcup_{\iota\in\mathcal{I}}\prog{\iota}$ for the set
+  $\mathcal{I}$.\tighten
+\end{definition}
+
+Instructions operate on machine \emph{states} (\autoref{def:state}), and their
+semantics are given by the machine's \emph{transition function}
+(\autoref{def:arm}). A machine state  consists of a program counter, a map from
+register names to register values, and a map from memory addresses to memory
+values. Each state component is either a bitvector or a map over bitvectors,
+making the set of all states of an ARM finite. The transition function of an ARM
+defines an interpreter for the ARM's language by specifying how to compute the
+output state for a given instruction and input state. We can apply this
+interpreter, together with the ARM's \emph{fuel function}, to define an
+\emph{execution} of the machine on a program and an initial state. The fuel
+function takes as input a sequence of instructions and returns a natural number
+that bounds the number of steps (i.e., state transitions) the machine can make
+to execute the given sequence. The inclusion of fuel models the requirement of
+in-kernel languages for all program executions to terminate~\cite{wang:jitk}. It
+also enables us to use symbolic execution to soundly reduce the semantics of
+these languages to SMT constraints, in order to formulate the synthesis queries
+in \autoref{s:algorithm:solving}.\tighten 
+
+
+\begin{definition}[State]\label{def:state}
+ A \textup{state} $\sigma$ is a tuple $(\pc, \regs, \mem)$ where $\pc$ is a
+ value, \regs is a function from register names to values, and \mem is a
+ function from memory addresses to values. Register names, memory addresses, and
+ all values are finite-precision integers, or bitvectors. We write
+ $\size{\sigma}$ to denote the \emph{size} of the state $\sigma$. The size
+ $\size{\sigma}$ is defined to be the tuple $(r, m, k_\pc, k_\regs, k_\mem)$,
+ where $r$ is the number of registers in $\sigma$, $m$ is the number of memory
+ addresses, and $k_\pc$, $k_\regs$, and $k_\mem$ are the width of the bitvector
+ values stored in the \pc, \regs, and \mem, respectively. Two states have the
+ same size if $\size{\sigma_i} = \size{\sigma_j}$; one state is smaller than
+ another, $\size{\sigma_i} \leq \size{\sigma_j}$, if each element of $\size{\sigma_i}$ 
+ is less than or equal to the corresponding element of $\size{\sigma_j}$.\tighten
+ \end{definition}
+
+
+\begin{definition}[Abstract Register Machines and Executions]\label{def:arm}
+  An \textup{abstract register machine} $\mathcal{A}$ is a tuple $(\mathcal{I},
+  \Sigma, \mathcal{T}, \Phi)$  where $\mathcal{I}$ is a set of abstract
+  instructions, $\Sigma$ is a set of states of the same size, $\mathcal{T} :
+  \prog{\mathcal{I}} \rightarrow \Sigma \rightarrow \Sigma$ is a
+  \textup{transition function} from instructions and states to states, and
+  $\Phi: \mathid{List}(\prog{\mathcal{I}}) \rightarrow \mathbb{N}$ is a
+  \emph{fuel function} from sequences of instructions to natural numbers. Given
+  a state $\sigma_0\in\Sigma$ and a sequence of instructions $\vec{p}$ drawn
+  from $\prog{\mathcal{I}}$, we define the \textup{execution} of $\mathcal{A}$
+  on $\vec{p}$ and $\sigma_0$ to be the result of applying $\mathcal{T}$ to
+  $\vec{p}$ at most $\Phi(\vec{p})$ times. That is, $\arm(\vec{p}, \sigma_0) =
+  \mathid{run}(\vec{p}, \sigma_0, \mathcal{T}, \Phi(\vec{p}))$, where  
+  \[
+    \mathid{run}(\vec{p}, \sigma, \mathcal{T}, k) = 
+    \begin{cases}
+        \sigma,& \text{if } k = 0 \text{ or } \pc(\sigma) \not\in [0, \size{\vec{p}})\\
+        \mathid{run}(\vec{p}, \mathcal{T}(\vec{p}[\pc(\sigma)], \sigma), \mathcal{T}, k-1),   & \text{otherwise.}
+    \end{cases}
+  \]
+\end{definition}
+
+\paragraph{Synthesizing JIT compilers for ARMs.} Given a source and target ARM,
+our goal is to synthesize a one-pass JIT compiler that translates source
+programs to semantically equivalent target programs. To make synthesis
+tractable, we fix the structure of the JIT to consist of an outer loop and a
+switch statement that dispatches compilation tasks to a set of
+\emph{\minicompilers} (\autoref{def:mini-compiler}). Our synthesis
+problem is therefore to find a sound \minicompiler for each abstract
+instruction in the source machine (\autoref{def:synthesis-problem}).\tighten
+
+\begin{definition}[\MiniCompiler]\label{def:mini-compiler}
+Let $\arm_S = (\mathcal{I}_S, \Sigma_S, \mathcal{T}_S, \Phi_S)$ and
+$\arm_T = (\mathcal{I}_T, \Sigma_T, \\ \mathcal{T}_T, \Phi_T)$ be two abstract register
+machines, $\cong$ an equivalence relation on their states $\Sigma_S$ and
+$\Sigma_T$, and $C: \prog{\iota} \rightarrow
+\mathid{List}(\prog{\mathcal{I}_T})$ a function for some
+$\iota\in\mathcal{I}_S$. We say that $C$ is a \textup{sound \minicompiler} for
+$\iota$ with respect to $\cong$ iff
+\[
+    \forall \sigma_S\in\Sigma_S,\ \sigma_T\in\Sigma_T,\ p\in\prog{\iota}. \ 
+            \sigma_S \cong \sigma_T \Rightarrow
+                 \arm_S(p, \sigma_S) \cong \arm_T(C(p), \sigma_T)
+\]
+\end{definition} 
+
+\begin{definition}[\MiniCompiler Synthesis]\label{def:synthesis-problem}  
+Given two abstract register machines $\arm_S = (\mathcal{I}_S, \Sigma_S,
+\mathcal{T}_S, \Phi_S)$ and $\arm_T=(\mathcal{I}_T, \Sigma_T,  \mathcal{T}_T, \Phi_T)$, as well
+as an equivalence relation $\cong$ on their states, the \textup{\minicompiler
+synthesis problem} is to generate a sound \minicompiler $C_\iota$ for each
+$\iota\in\mathcal{I}_S$ with respect to $\cong$.\tighten
+\end{definition} 
+
+The general version of our synthesis problem, defined above, uses an arbitrary
+equivalence relation $\cong$ between the states of the source and target
+machines to determine if a source and target program are semantically
+equivalent. \jitsynth can, in principle, solve this problem with the naive
+metasketch described in \autoref{s:overview}. In practice, however, the naive
+metasketch scales poorly, even on small languages such as toy eBPF and RISC-V\@.
+So, in this paper, we focus on source and target ARMs that satisfy an additional
+assumption on their state equivalence relation: it can be expressed in terms of
+injective mappings from source to target states (\autoref{def:state-equiv}).
+%When we write $\cong$ from now on, we mean this restricted form of state equivalence. 
+This restriction enables \jitsynth to employ optimizations (such as pre-load
+sketches described in \autoref{s:algorithm:pld}) that are crucial to scaling
+synthesis to real in-kernel languages.\tighten
+
+
+\begin{definition}[Injective State Equivalence Relation]\label{def:state-equiv}
+Let $\arm_S$ and $\arm_T$ be abstract register machines with states $\Sigma_S$
+and $\Sigma_T$ such that $\size{\sigma_S}\leq\size{\sigma_T}$ for all
+$\sigma_S\in\Sigma_S$ and $\sigma_T\in\Sigma_T$. Let $\mathcal{M}$ be a
+\emph{state mapping} $(\mathcal{M}_\pc, \mathcal{M}_\regs, \mathcal{M}_\mem)$
+from $\Sigma_S$ and $\Sigma_T$,  where $\mathcal{M}_\pc$ multiplies the program
+counter of the states in $\Sigma_S$ by a constant factor, $\mathcal{M}_\regs$ is
+an injective map from register names in $\Sigma_S$ to those in $\Sigma_T$, and
+$\mathcal{M}_\mem$ is an injective map from memory addresses in $\Sigma_S$ to
+those in $\Sigma_T$. We say that two states  $\sigma_S\in\Sigma_S$ and
+$\sigma_T\in\Sigma_T$ are equivalent according to $\mathcal{M}$, written
+$\sigma_S \cong_\mathcal{M} \sigma_T$, iff $\mathcal{M}_\pc(\pc(\sigma_S)) =
+\pc(\sigma_T)$, $\regs(\sigma_S)[r] = \regs(\sigma_T)[\mathcal{M_\regs}(r)]$ for
+all register names $r\in\emph{dom}(\regs(\sigma_S))$, and $\mem(\sigma_S)[a] =
+\mem(\sigma_T)[\mathcal{M_\mem}(a)]$ for all memory addresses
+$a\in\emph{dom}(\mem(\sigma_S))$. The binary relation $\cong_\mathcal{M}$ is
+called an \textup{injective state equivalence relation} on $\arm_S$ and
+$\arm_T$.
+\end{definition}
+
+\paragraph{Soundness of JIT compilers for ARMs.} Finally, we note that a JIT
+compiler composed from the synthesized \minicompilers correctly
+translates every source program to an equivalent target program.
+We formulate and prove this theorem using the Lean theorem prover~\cite{moura:lean}.
+
+\begin{theorem}[Soundness of JIT compilers]\label{thm:end-to-end-soundness}
+Let $\arm_S = (\mathcal{I}_S, \Sigma_S, \mathcal{T}_S, \Phi_S)$ and
+$\arm_T=(\mathcal{I}_T, \Sigma_T,  \mathcal{T}_T, \Phi_T)$ be abstract register
+machines, $\cong_\mathcal{M}$ an injective state equivalence relation on their
+states such that $M_\pc(\pc(\sigma_S)) = N_\pc\pc(\sigma_S)$,
+and $\{C_1,\ldots,C_{|\mathcal{I}_S|}\}$ a solution to the \minicompiler
+synthesis problem for $\arm_S$, $\arm_T$, and $\cong_\mathcal{M}$
+where $\forall s\in\prog{\iota}.\ |C_i(s)| = N_\pc$. Let
+$\mathcal{C} : \prog{\mathcal{I}_S} \rightarrow
+\mathid{List}(\prog{\mathcal{I}_T})$ be a function that maps concrete
+instructions $s\in\prog{\iota}$ to the compiler output $C_\iota(s)$ for
+$\iota\in\mathcal{I}_S$. If $\vec{s} = s_1, \ldots, s_n$ is a sequence of
+concrete instructions drawn from $\mathcal{I}_S$, and $\vec{t} =
+\mathcal{C}(s_1)\cdot\ldots\cdot\mathcal{C}(s_n)$ where $\cdot$ stands for
+sequence concatenation, then $\forall \sigma_S\in\Sigma_S, \sigma_T\in\Sigma_T.\
+\sigma_S \cong_\mathcal{M} \sigma_T \Rightarrow \arm_S(\vec{s}, \sigma_S)
+\cong_\mathcal{M} \arm_T(\vec{t}, \sigma_T)$.\tighten
+\end{theorem}

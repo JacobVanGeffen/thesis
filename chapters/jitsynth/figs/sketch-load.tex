@@ -1,0 +1,9 @@
+\begin{align*}
+  &\texttt{lui  }\ \ \ 
+    \texttt{x28}\ 
+    (S_1 + ((S_1 \& \texttt{0x800}) << 1))[12..31];\\
+  &\texttt{addiw}\ 
+    \texttt{x28}\ 
+    (S_1 + ((S_1 \& \texttt{0x800}) << 1))[0..11];\\
+  &T_1; T_2; T_3 
+\end{align*}

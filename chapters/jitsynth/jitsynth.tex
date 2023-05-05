@@ -1,0 +1,54 @@
+\chapter{JitSynth: Synthesizing Just-In-Time Compilers for In-Kernel DSLs}
+\label{c:jitsynth}
+% \input{macros}
+
+%\begin{abstract}
+
+Modern operating systems allow user-space applications to submit code for kernel
+execution through the use of in-kernel domain specific languages (DSLs).
+Applications use these DSLs to customize system policies and add new
+functionality. For performance, the kernel executes them via just-in-time (JIT)
+compilation. The correctness of these JITs is crucial for the security of the
+kernel: bugs in in-kernel JITs have led to numerous critical issues and
+patches.\tighten
+
+\smallskip
+This paper presents \jitsynth, the first tool for synthesizing verified JITs for
+in-kernel DSLs. \jitsynth takes as input interpreters for the source DSL and the
+target instruction set architecture. Given these interpreters, and a mapping
+from source to target states, \jitsynth synthesizes a verified JIT compiler from
+the source to the target. Our key idea is to formulate this synthesis problem as
+one of synthesizing a per-instruction compiler for \emph{abstract register
+machines}. Our core technical contribution is a new \emph{compiler metasketch}
+that enables \jitsynth to efficiently explore the resulting synthesis search
+space. To evaluate \jitsynth, we use it to synthesize a JIT from eBPF to RISC-V
+and compare to a recently developed Linux JIT\@. The synthesized JIT avoids all
+known bugs in the Linux JIT, with an average slowdown of
+$\EbpfCompilerSlowdown\times$ in the performance of the generated code. We also
+use \jitsynth to synthesize JITs for two additional source-target
+pairs.  The results show that \jitsynth offers a promising new way
+to develop verified JITs for in-kernel DSLs.\tighten
+
+%\end{abstract}
+
+\section{Introduction}
+\input{chapters/jitsynth/intro}
+
+\input{chapters/jitsynth/overview}
+
+\input{chapters/jitsynth/problem}
+
+\input{chapters/jitsynth/search}
+
+\input{chapters/jitsynth/impl}
+
+\input{chapters/jitsynth/results}
+
+\input{chapters/jitsynth/related}
+
+\input{chapters/jitsynth/conclusion}
+
+%\bibliographystyle{splncs04}
+%\bibliography{n-str,jitsynth,n,n-conf}
+
+% \input{appendix}

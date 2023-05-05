@@ -1,0 +1,7 @@
+Filter  Linux   Jitsynth        Jitsynth-no-nop Interpreter
+QEMU    64      179             148             630
+Tor     48      125             103             429
+Firefox 56      162             140             626
+Nacl    57      162             140             648
+OpenSSH 60      170             148             688
+vsftpd  48      126             102             460

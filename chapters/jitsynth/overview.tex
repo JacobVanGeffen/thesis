@@ -1,0 +1,218 @@
+\section{Overview}
+\label{s:overview}
+
+\begin{figure}[h]
+  \centering
+  \resizebox{\linewidth}{!}{
+    \input{figs/instrs.tex}
+  }
+  \vspace{-.5em}
+  \caption{Subsets of eBPF and RISC-V
+used as source and target languages, respectively,
+in our running example:
+$R[r]$ denotes the value of register~$r$;
+$M[a]$ denotes the value at memory address~$a$;
+$\concat$ denotes concatenation of bitvectors;
+superscripts (e.g., $0^{32}$) denote repetition of bits;
+$\sexti(x)$ and $\sextll(x)$ sign-extend $x$ to 32 and 64 bits, respectively;
+and $\extractop(i, j, x)$ produces a subrange of bits of $x$ from index $i$ down to $j$.\looseness=-1}
+%$r$ denotes a BPF register;
+%$\rd$, $\mathit{rs1}$, and $\mathit{rs2}$ denote RISC-V registers;
+\label{fig:lang-instrs}
+\end{figure}
+
+This section provides an overview of \jitsynth by illustrating how it
+synthesizes a toy JIT compiler (\autoref{fig:lang-instrs}). The source language
+of the JIT is a tiny subset of eBPF~\cite{fleming:ebpf} consisting of one
+instruction, and the target language is a subset of 64-bit
+RISC-V~\cite{riscv:isa} consisting of seven instructions. Despite the simplicity
+of our languages, the Linux kernel JIT used to produce incorrect code for this
+eBPF instruction~\cite{nelson:bpf-riscv-add32-bug}; such miscompilation bugs not
+only lead to correctness issues, but also enable adversaries to compromise the
+OS kernel by crafting malicious eBPF programs~\cite{wang:jitk}. This section
+shows how \jitsynth can be used to synthesize a JIT that is verified with
+respect to the semantics of the source and target languages.\tighten
+
+\paragraph{In-kernel languages.} 
+
+\jitsynth expects the source and target languages to be a set of instructions
+for manipulating the state of an \emph{abstract register machine}
+(\autoref{s:problem}). This state consists of a program counter (\pc), a finite
+sequence of general-purpose registers (\regs), and a finite sequence of memory
+locations (\mem), all of which store bitvectors (i.e., finite precision
+integers). The length of these bitvectors is defined by the language; for
+example, both eBPF and RISC-V store 64-bit values in their registers. An
+instruction consists of an \emph{opcode} and a finite set of \emph{fields},
+which are bitvectors representing either register identifiers or immediate
+(constant) values. For instance, the \cc{addi32} instruction in eBPF
+has two fields: $\dst$ is a 4-bit value representing the index of the
+output register, and $\mathid{imm32}$ is a 32-bit immediate.
+(eBPF instructions may have two additional fields $\src$ and $\off$,
+which are not shown here as they are not used by \cc{addi32}.)
+An abstract
+register machine for a language gives meaning to its instructions: the machine
+consumes an instruction and a state, and produces a state that is the result of
+executing that instruction. \autoref{fig:lang-instrs} shows a high-level
+description of the abstract register machines for our languages.\tighten
+
+\paragraph{\jitsynth interface.}
+
+To synthesize a compiler from one language to another, \jitsynth takes as input
+their syntax, semantics, and a mapping from source to target states. All three
+inputs are given as a program in a \emph{solver-aided host
+language}~\cite{torlak:rosette}. \jitsynth uses Rosette as its host, but the
+host can be any language with a symbolic
+evaluation engine that can reduce the semantics of host programs to SMT
+constraints (e.g.,~\cite{solar-lezama:sketch}).
+\autoref{fig:toy-inputs} shows the interpreters for the source and
+target languages (i.e., emulators for their abstract register machines), as well
+as the state-mapping functions \cc{regST}, \cc{pcST}, and \cc{memST} that
+\jitsynth uses to determine whether a source state $\sigma_S$ is equivalent to a
+target state $\sigma_T$. In particular, \jitsynth deems these states equivalent,
+denoted by $\sigma_S \cong \sigma_T$, whenever 
+%
+$\regs(\sigma_T)[\cc{regST}(r)] = \regs(\sigma_S)[r]$, $\pc(\sigma_T) =
+\cc{pcST}(\pc(\sigma_S))$, and $\mem(\sigma_T)[\cc{memST}(a)] =
+\mem(\sigma_S)[a]$ 
+%
+for all registers $r$ and memory addresses $a$.\tighten
+
+\begin{figure}[h]
+\centering
+\resizebox{\linewidth}{!}{%
+\begin{minipage}{1.03\linewidth}
+\lstinputlisting[language=rosette,xleftmargin=-.5em,firstline=1,basicstyle=\scriptsize\ttfamily]{code/toy-inputs.rkt}%multicols=2,numbers=left,numbersep=.75em,
+\end{minipage}}
+\vspace{-.5em}
+  \caption{Snippets of inputs to \jitsynth: the interpreters for the source (eBPF) and and target (RISC-V) languages and state-mapping functions.}
+  \label{fig:toy-inputs}
+  \end{figure}
+
+\paragraph{Decomposition into per-instruction compilers.} 
+
+Given these inputs, \jitsynth generates a \emph{per-instruction compiler} from
+the source to the target language. To ensure that the resulting compiler is
+correct (\autoref{thm:end-to-end-soundness}), and that one will be found if it
+exists (\autoref{thm:synthesis-soundness-and-completeness}), \jitsynth puts two
+restrictions on its inputs. First, the inputs must be
+self-finitizing~\cite{torlak:rosette}, meaning that both the interpreters and
+the mapping functions must have a finite symbolic execution tree when applied to
+symbolic inputs.
+%such as an instruction with symbolic fields or a state with symbolic
+%contents. 
+Second, the target machine must have at least as many registers and memory
+locations as the source machine; these storage cells must be as wide as those of
+the source machine; and the state-mapping functions (\cc{pcST}, \cc{regST}, and
+\cc{memST}) must be injective. Our toy inputs satisfy these restrictions, as do
+the real in-kernel languages evaluated in \autoref{s:eval}.
+
+\paragraph{Synthesis workflow.} 
+
+\jitsynth generates a per-instruction compiler for a given source and target
+pair in two stages. The first stage uses an optimized \emph{compiler metasketch}
+to synthesize a \minicompiler from every instruction in the source language to a
+sequence of instructions in the target language (\autoref{s:algorithm}). The
+second stage then simply stitches these mini compilers into a full C compiler
+using a trusted outer loop and a switch statement. The first stage is a core
+technical contribution of this paper, and we illustrate it next on our toy
+example.\tighten
+
+
+\paragraph{Metasketches.} 
+
+To understand how \jitsynth works, consider the basic problem of determining if
+every \cc{addi32} instruction can be emulated by a sequence of $k$ instructions
+in toy RISC-V\@. In particular, we are interested in finding a program
+$C_\cc{addi32}$ in our host language (which \jitsynth translates to C) that
+takes as input a source instruction $s = \cc{addi32}\ \dst, \mathid{imm32}$ and
+outputs a semantically equivalent RISC-V program $t = [t_1,\ldots,t_k]$. That
+is, for all $\dst, \mathid{imm32}$, and for all equivalent states $\sigma_S \cong
+\sigma_T$, we have $\mathid{run}(s, \sigma_S,
+\cc{ebpf-interpret})\cong\mathid{run}(t, \sigma_T, \cc{rv-interpret})$, where
+$\mathid{run}(e, \sigma, f)$ executes the instruction interpreter $f$ on the
+sequence of instructions $e$, starting from the state $\sigma$
+(\autoref{def:arm}).\tighten
+
+We can solve this problem by asking the host synthesizer to search for
+$C_\cc{addi32}$ in a space of candidate \minicompilers of length $k$. We
+describe this space with a syntactic template, or a \emph{sketch}, as shown below:
+
+\begin{lstlisting}[language=rosette,xleftmargin=0em,mathescape=true,basicstyle=\scriptsize\ttfamily]
+(define (compile-addi32 s)       ; Returns a list of k instruction holes, to be 
+  (define dst (ebpf-insn-dst s)) ; filled with toy RISC-V instructions. Each    
+  (define imm (ebpf-insn-imm s)) ; hole represents a set of choices, defined 
+  (list (??insn dst imm) ...))   ; by the ??insn procedure. 
+
+(define (??insn . sf)            ; Takes as input source instruction fields and
+  (define rd  (??reg sf))        ; uses them to construct target field holes. 
+  (define rs1 (??reg sf))        ; ??reg and ??imm field holes are bitvector 
+  (define rs2 (??reg sf))        ; expressions over sf and arbitrary constants.
+  (choose*                       ; Returns an expression that chooses among  
+    (rv-insn lui rd rs1 rs2 (??imm 20 sf))   ; lui, addiw,
+    ...                                      ; ..., and
+    (rv-insn sb  rd rs1 rs2 (??imm 12 sf)))) ; sb instructions.
+\end{lstlisting}
+
+Here, \cc{(??insn dst imm)} stands for a missing expression---a hole---that the
+synthesizer needs to fill with an instruction from the toy RISC-V language. To
+fill an instruction hole, the synthesizer must find an expression that computes
+the value of the target instruction's fields. \jitsynth limits this expression
+language to bitvector expressions (of any depth) over the fields of the source
+instruction and arbitrary bitvector constants.\tighten
+
+Given this sketch, and our correctness specification for $C_\cc{addi32}$, the
+synthesizer will search the space defined by the sketch for a program that
+satisfies the specification.
+%
+Below is an example of the resulting toy compiler from eBPF to
+RISC-V, synthesized and translated to C by \jitsynth (without the
+outer loop):\tighten
+\lstinputlisting[language=C,xleftmargin=2em,firstline=1,basicstyle=\scriptsize\ttfamily]{code/toy-compiler.c}%multicols=2,numbers=left,numbersep=.75em,
+
+Once we know how to synthesize a compiler of length $k$, we can easily extend
+this solution into a naive method for synthesizing a compiler of any length. We
+simply enumerate sketches of increasing lengths, $k = 1, 2, 3, \ldots$, invoke
+the synthesizer on each generated sketch, and stop as soon as a solution is
+found (if ever). The resulting ordered set of sketches forms a
+metasketch~\cite{bornholt:synapse}---i.e., a search space and a strategy for
+exploring it---that contains all candidate mini compilers (in a subset of the
+host language) from the source to the target language. This naive metasketch can
+be used to find a mini compiler for our toy example in {493 minutes}. However,
+it fails to scale to real in-kernel DSLs (\autoref{s:eval}), motivating the need
+for \jitsynth's optimized compiler metasketches.\tighten
+
+\paragraph{Compiler metasketches.} \jitsynth optimizes the naive metasketch by
+extending it with two kinds of more tightly constrained sketches, which are
+explored first. A constrained sketch of size $k$ usually contains a correct
+solution of a given size if one exists, but if not, \jitsynth will eventually
+explore the naive sketch of the same length, to maintain completeness. We give
+the intuition behind the two optimizations here, and present them in detail in
+\autoref{s:algorithm}. 
+
+First, we observe that practical source and target languages include similar
+kinds of instructions. For example, both eBPF and RISC-V include instructions
+for adding immediate values to registers. This similarity often makes it
+possible to emulate a source instruction with a sequence of target instructions
+that access the same part of the state (the program counter, registers, or
+memory) as the source instruction. For example, \cc{addi32} reads and writes
+only registers, not memory, and it can be emulated with RISC-V instructions that
+also access only registers. To exploit this observation, we introduce
+\emph{read-write sets}, which summarize, soundly and precisely, how an
+instruction accesses state. \jitsynth uses these sets to define \emph{read-write
+sketches} for a given source instruction, including only target instructions
+that access the state in the same way as the source instruction. For instance, a
+read-write sketch for \cc{addi32} excludes both \cc{lb} and \cc{sb} instructions
+because they read and write memory as well as registers.\tighten
+
+Second, we observe that hand-written JITs use pseudoinstructions to simplify
+their implementation of \minicompilers. These are simply subroutines or macros
+for generating target sequences that implement common functionality. For
+example, the Linux JIT from eBPF to RISC-V includes a pseudoinstruction for
+loading 32-bit immediates into registers. \jitsynth mimics the way hand-written
+JITs use pseudoinstructions with the help of \emph{pre-load sketches}. These
+sketches first use a synthesized pseudoinstruction to create a sequence of
+concrete target instructions that load source immediates into scratch registers;
+then, they include a compute sequence comprised of read-write instruction holes.
+Applying these optimizations to our toy example, \jitsynth finds a \minicompiler
+for \cc{addi32} in {5 seconds}---a {roughly $6000\times$} speedup over the naive
+metasketch.\tighten

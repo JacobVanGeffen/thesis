@@ -1,0 +1,7 @@
+Filter  Linux   Jitsynth        Interpreter
+QEMU    51      162             496
+Tor     36      113             346
+Firefox 44      145             470
+Nacl    44      145             470
+OpenSSH 46      153             500
+vsftpd  36      113             350

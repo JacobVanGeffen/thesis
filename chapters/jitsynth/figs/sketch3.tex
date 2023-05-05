@@ -1,0 +1,14 @@
+\begin{align*}
+&\text{Load}(S_1); \ 
+&T_1; ...; T_i; ...; T_K; \ 
+&\text{Store}() \\
+&\text{where}\\
+&T_i = choose
+\begin{cases}
+  \texttt{lui  }\ \ \ M_{dst}(R_1)\ \textbf{?}_{imm}\\
+  \texttt{addiw}\ M_{dst}(R_1)\ M_{src}(R_1)\ \textbf{?}_{imm}\\
+  \texttt{add  }\ \ \ M_{dst}(R_1)\ M_{src1}(R_1)\ M_{src2}(R_1)\\
+  \texttt{slli }\ M_{dst}(R_1)\ M_{src}(R_1)\ \textbf{?}_{imm}\\
+  \texttt{srli }\ M_{dst}(R_1)\ M_{src}(R_1)\ \textbf{?}_{imm}\\
+\end{cases}\\
+\end{align*}

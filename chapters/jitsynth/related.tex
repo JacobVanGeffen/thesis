@@ -1,0 +1,68 @@
+\section{Related Work}\label{s:related}
+
+
+\paragraph{JIT compilers for in-kernel languages.}
+
+JIT compilers have been widely used to improve
+the extensibility and performance of systems software,
+such as OS kernels~\cite{chen:vmsec,engler:vcode,fleming:ebpf,myreen:vjit}.
+%
+One notable system is Jitk~\cite{wang:jitk}.
+It builds on the CompCert compiler~\cite{leroy:compcert}
+to compile classic BPF programs to machine instructions.
+%
+Both Jitk and CompCert are formally verified for correctness
+using the Coq interactive theorem prover.  Jitk is further extended
+to support eBPF~\cite{sobel:ejitk}.
+%
+Like Jitk,
+\jitsynth provides formal correctness guarantees
+of JIT compilers.
+Unlike Jitk,
+\jitsynth does not require developers to write either the implementation or proof
+of a JIT compiler.
+Instead,
+it takes as input interpreters of both source and target languages
+and state-mapping functions,
+using automated verification and synthesis to produce a JIT compiler.
+
+An in-kernel extension system such as eBPF
+also contains a \emph{verifier},
+which checks for safety and termination of input programs~\cite{gershuni:crab-ebpf,wang:jitk}.
+\jitsynth assumes a well-formed input program that passes the verifier
+and focuses on the correctness of JIT compilation.
+
+\paragraph{Synthesis-aided compilers.}
+
+There is a rich literature that explores generating and synthesizing
+peephole optimizers and superoptimizers based on a given ISA or language
+specification~\cite{bansal:superopt,davidson:peephole,gulwani:brahma,joshi:denali,massalin:superopt,sasnauskas:souper,schkufza:stoke}.
+%
+Bansal and Aiken described a PowerPC-to-x86 binary translator using
+peephole superoptimization~\cite{bansal:binary}.
+%
+Chlorophyll~\cite{phothilimthana:chlorophyll} applied synthesis
+to a number of compilation tasks for the GreenArrays GA144 architecture,
+including code partitioning, layout, and generation.
+%
+\jitsynth bears the similarity of translation between a source-target pair
+of languages and shares the challenge of scaling up synthesis.
+%
+Unlike existing work,
+\jitsynth synthesizes a \emph{compiler} written in a host language,
+and uses compiler metasketches for efficient synthesis.
+%which is further translated into C for execution in an OS kernel.
+
+\paragraph{Compiler testing.}
+Compilers are complex pieces of software and are known to be difficult
+to get right~\cite{marcozzi:compiler-fuzzing}.
+Recent advances in compiler testing,
+such as Csmith~\cite{yang:csmith} and EMI~\cite{zhang:emi},
+have found hundreds of bugs in GCC and LLVM compilers.
+%
+Alive~\cite{lee:aliveinlean,lopes:alive} and Serval~\cite{nelson:serval}
+use automated verification techniques to uncover bugs in the LLVM's peephole optimizer
+and the Linux kernel's eBPF JIT compilers, respectively.
+%
+\jitsynth complements these tools by providing a correctness-by-construction
+approach for writing JIT compilers.
