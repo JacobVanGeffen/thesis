@@ -1,4 +1,9 @@
 \chapter{Introduction}
+% Both of the works presented in this dissertation take advantage of two key ideas
+% in order to effectively specialize for their respective domains.
+% ...
+% The first of these ideas is to simplify the synthesis task with system decomposition...
+% The second key idea is leveraging system-specific metaprogramming abstractions...
 
 % What is hard?
 In recent years, the development of software systems has become increasingly
@@ -175,12 +180,49 @@ Moreover, we have confirmed that the synthesized eBPF to RISC-V compiler
 lacks bugs found in the existing Linux compiler.
 
 \section{Automatic Crash Consistency with Synthesis}
+Storage systems face an increasing demand for reliability.
+From Linux file systems to Amazon cloud-based key-value stores,
+storage systems must maintain the integrity of their data
+even in the presence of system crashes.
+This property of storage systems is known as \textit{crash consistency}.
+Guaranteeing crash consistency is a highly non-trivial task for developers,
+as it requires maintaining complex invariants that depend greatly on
+storage system implementation details.
+Moreover, failing to guarantee crash consistency may result in severe impacts,
+including costly slowdowns and massive data losses. % TODO make more concrete
+% TODO finish: Highlight what can go wrong if crash consistency is done incorrectly
 % TODO
 % DepSynth: consider storage mechanism separately from crash consistency mechanism (TODO)
 % DepSynth: design rules language to describe any runtime dependencies (TODO)
 
+\cref{c:depsynth} presents \depsynth, a tool for automatically generating crash consistency
+code for storage systems.
+\depsynth takes advantage of the observation
+(identified in previous work \todo{cite Featherstitch})
+that crash consistency mechanisms fundamentally enforce \textit{write-before relationships}.
+To automate crash consistency,
+\depsynth takes as input the implementation of a (non-crash consistent) storage system together
+with a set of example programs over the system called \textit{litmus tests}.
+The output is a set of \textit{dependency rules} which specify, at runtime,
+the required write-before relationships to enforce.
+
+% TODO revise this paragraph
+We take advantage of several novel abstractions in order enable
+automatic crash consistency with \depsynth.
+First, we assume a new \textit{angelic crash consistency} model
+that delegates enforcement of write-before relationships to a
+\textit{dependency-aware buffer cache}
+that sits between the storage system software and hardware layers.
+Second, we introduce a language for dependency rules
+that allows for both \textit{expressive} and \textit{generalizable} rules.
+Finally, we describe a new search for dependency rules
+directed by input litmus tests.
+These insights enable \depsynth to synthesize dependency rules for an existing
+production key-value store at Amazon\todo{cite shardstore} in 49\todo{macro this} minutes.
+
 \section{Contributions}
 The remainder of this dissertation is broken into two chapters.
-The first presents \jitsynth, a tool for synthesizing just-in-time compilers for
-in-kernel DSLs.
-k
+% TODO
+%\cref{c:jitsynth} presents \jitsynth and the techniques that enable
+%\jitsynth to synthesize in-kernel JIT compilers.
+%\cref{c:depsynth} presents \depsynth and the techniques that enable
