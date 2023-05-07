@@ -222,7 +222,24 @@ production key-value store at Amazon\todo{cite shardstore} in 49\todo{macro this
 
 \section{Contributions}
 The remainder of this dissertation is broken into two chapters.
-% TODO
-%\cref{c:jitsynth} presents \jitsynth and the techniques that enable
-%\jitsynth to synthesize in-kernel JIT compilers.
-%\cref{c:depsynth} presents \depsynth and the techniques that enable
+\cref{c:jitsynth} introduces \jitsynth and the techniques that enable
+\jitsynth to synthesize in-kernel JIT compilers.
+By decomposing the search with minicompilers
+and efficiently exploring the space with novel metasketches,
+\jitsynth is able to synthesize correct JITs that perform
+comparably to their hand-written counterparts.
+
+\cref{c:depsynth} presents \depsynth, a tool for automating
+crash consistency in storage systems. In \cfref{c:depsynth},
+we introduce a new dependency rule language that describes rules
+which specify required write-before relationships for a storage system
+at runtime. This abstraction over write-before relationships, along
+with a new per-litmus-test search, allows \depsynth to synthesize
+correct dependency rules for a production system.
+Moreover, these generated rules have nearly the same effect on performance
+as dependencies hand-written by experts.
+
+Both of these chapters demonstrate
+how program synthesis can aid developers in building
+correct and performant systems.
+
