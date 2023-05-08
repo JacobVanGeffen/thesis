@@ -201,8 +201,15 @@ Overall, our analysis indicates
 that \depsynth can prevent a range of ordering-related crash-consistency bugs,
 but other bugs would require a different approach.
 
-\subsection{Other Storage Systems}\label{sec:eval:other}
+\subsection{Other Case Studies}\label{sec:eval:other}
+In addition to the \shardstore case study, % in \cref{sec:eval:shardstore},
+we have applied \depsynth to two other storage systems.
+The first is a modification of \shardstore that relaxes assumptions made on the underlying disk hardware.
+The second is a simple log-strucutred file system.
+\depsynth was effectively able to synthesize rules for both of these
+additional cases, demonstrating the generality of our approach.
 
+\paragraph{Log-Structured File System.}
 In addition to the \shardstore case study, % in \cref{sec:eval:shardstore},
 we have also used \depsynth
 to implement a log-structured file system~\cite{rosenblum:lfs}.

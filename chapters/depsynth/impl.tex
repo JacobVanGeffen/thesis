@@ -1,4 +1,4 @@
-\section{Implementation}\label{s:impl}
+\section{Optimizations and Design Choices}\label{s:impl}
 
 We implement both the \depsynth algorithm
 and the storage systems we study in \cref{sec:eval}
@@ -42,6 +42,87 @@ uses an SMT solver to
 pre-compute a set of \emph{necessary} ordering edges---%
 edges which \emph{must} be in the happens-before graph---%
 and uses that set to short-circuit \crashconsistentalg.
+
+\paragraph{Attempting graph search with a \tord solver.}
+One bottleneck in the time \depsynth takes to find a complete set of
+dependency rules comes from the time it takes to search for a minimal
+happens-before graph for a given litmus test.
+This section explores a strategy that we explored to limit this bottleneck.
+Specifically, we encode the happens-before graph search problem
+in the theory of ordering consistency (\tord)\todo{cite}
+and execute the search with an existing \tord solver.
+Ultimately, we found that this different search strategy did not 
+improve the overall runtime, but we find this negative
+result worth reporting.
+
+% TODO elaborate on \tord
+
+% TODO present results
+Intuitively, % TODO discuss why this didn't work
+
+\subsection{Faster Consistency Checks for Litmus Tests}
+\label{s:improved-search}
+As \cref{sec:eval:shardstore} discusses,
+a large majority of the litmus tests seen during the \depsynth
+algorithm do not result in new dependency rules
+(\depsynth generated new rules for only \shardstoretestsused of \shardstoreinputtests
+ litmus tests seen for \shardstore).
+However, for each litmus test in the input set, \depsynth
+must perform a check that the accumulated dependency rules
+guarantee the crash consistency of the test.
+For synthesizing rules in \shardstore,
+these take up \shardstoreverificationminutes minutes (\shardstoreverificationpercent\%)
+of the overall search time.
+
+\paragraph{Decomposing crash consistency queries.}
+As \cref{todo} explains, \depsynth offloads a query to an SMT
+solver when it first encounters a new litmus test to determine
+whether or not the current set of dependency rules satisfy the
+crash consistency property for that test.
+In practice, this query is encoded by representing the \textit{committed status}
+of each write from a litmus test as a boolean variable
+and each edge in the happens-before graph as an implication between those variables.
+% The value of these variables also affects the disk state,
+% which is used
+For tests that generate a large happens-before graph
+with respect to the current dependency rules,
+the query can take tens of seconds.
+
+Experimentally, we observed that for these queries with long runtimes,
+decomposing the query by concretizing one write-committed variable
+drastically speeds up overall solving time
+(at most \splitvariablebestspeedup \times speedup for a single litmus test).
+Specifically, considering the set of write-committed variables $V$,
+the happens-before graph $G\subset V\times V$,
+and the original encoding for the litmus test crash consistency check $P(G)$,
+we choose a variable $v_0\in V$ and issue the following two queries:
+\begin{enumerate}
+  \item $v_0 \wedge \forall v\in V. (v, v_0)\in G \rightarrow v) \wedge P(G)$
+  \item $\neg v_0 \wedge \forall v\in V. (v, v_0)\in G \rightarrow \neg v) \wedge P(G)$
+\end{enumerate}
+The litmus test is crash consistent with respect to the dependency rules
+if and only if both queries succeed.
+
+Intuitively, this decomposition can result in faster solving times for two reasons.
+First, this optimization can be seen as a pre-processing variable selection step.
+By taking advantage of the relationship between nodes in the happens-before graph
+(which is abstracted away in the constraints sent to the solver),
+we are effectively telling the solver to select a good first variable for branching.
+Second, concretizing write-committed variables can also indirectly simplify the
+crash consistency predicate for the litmus test.
+The crash consistency predicate is a function over disk states,
+and the disk state itself depends on the write-committed variables.
+Thus, by assigning concrete values to some of those variables,
+constraints representing the crash consistency predicate over the disk state
+may be simplified or eliminated.
+
+\paragraph{Concretizing More Variables.}
+%Specifically, we choose a variable whose corresponding 
+Upon further experimentation, we noticed both that the number of
+concretized variables and the specific variables chosen for concretization
+significantly impacted solving time.
+Ultimately, % TODO chose log n vars such that the most edges were eliminated
+
 
 \if 0
 
