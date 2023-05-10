@@ -1,0 +1,19 @@
+\section{Improving Happens-Before Graph Search}
+\label{s:improved-search}
+A major bottleneck in the time \depsynth takes to find a complete set of
+dependency rules comes from the time it takes to search for a minimal
+happens-before graph for a given litmus test.
+This overhead becomes exacerbated for more complex storage systems
+that require larger litmus tests to describe their behavior.
+This section explores techniques for reducing this overhead.
+% The 
+
+In order to minimize the happens-before graph search time,
+we took two approaches:
+\begin{enumerate}
+  \item Encoding the problem in the theory of ordering consistency (\tord)\todo{cite}
+        and search for happens-before graphs with an existing \tord solver
+  \item Optimizing existing
+\end{enumerate}
+The next subsections describe these approaches and their respective effectiveness
+in detail.

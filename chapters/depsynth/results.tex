@@ -202,16 +202,62 @@ that \depsynth can prevent a range of ordering-related crash-consistency bugs,
 but other bugs would require a different approach.
 
 \subsection{Other Case Studies}\label{sec:eval:other}
+% TODO include extra paragraph here, from the ECOOP edits
+
 In addition to the \shardstore case study, % in \cref{sec:eval:shardstore},
 we have applied \depsynth to two other storage systems.
-The first is a modification of \shardstore that relaxes assumptions made on the underlying disk hardware.
+The first is a modification of \shardstore with a different underlying disk hardware model.
 The second is a simple log-strucutred file system.
 \depsynth was effectively able to synthesize rules for both of these
 additional cases, demonstrating the generality of our approach.
 
+\paragraph{\shardstore with SMR.}
+Part of \depsynth's requirement for input storage system implementations 
+is a model of how the underlying disk hardware behaves.
+For example, some storage devices automatically enforce
+an order over writes or may disallow particular orders of writes
+to the same extent on disk.
+In the case study of \shardstore discussed above,
+we use a disk model that represents a conventional magnetic-recording (CMR) hard disk.
+For this second application of \depsynth, we instead use a model of
+shingled magnetic recording (SMR) disks and synthesize rules
+for \shardstore under this new model.
+
+To understand how this difference in disk models will affect the synthesized rules,
+we first give a brief overview of SMR disks.
+Like traditional CMR disks, SMR drives store data on platters that contain tracks
+read by a magnetic needle.
+Where the technologies differ is in the layout of the tracks:
+tracks in CMR disks are non-overlapping and lay parallel to each other,
+while tracks in SMR lay partially over one another.
+This allows SMR disks to store data more densely than their CMR counterparts,
+but requires that all writes to a single SMR extent be \textit{appends}.
+In order to write data at a location before the append pointer in an SMR extend,
+the whole extent must first be wiped.
+
+%This has two implications for our use of \depsynth over \shardstore with
+%an SMR disk model.
+%First, since SMR drives will force data to be appended to a single extent \textit{in order},
+%rules that specify an order over writes to the same extent that \textit{matches the append order} are not necessary.
+%Second, since data cannot be written out-of-order to an SMR extent without first wiping the extent,
+%rules that specify any order over writes to the same extent \textit{other than the append order}
+%will not be enforceable.
+% TODO conclude this?
+
+We ran \depsynth to synthesize rules for the \shardstore-like system with an underlying SMR disk model.
+To do so, we generated a new set of \shardstoreinputtests litmus tests, each with a maximum
+of \shardstoremaxops operations.
+For this new system, \depsynth generated \shardstoresmrnumrules
+in \shardstoresmrsynthesistime minutes.
+During this process, \depsynth invoked the \rulesfortest procedure
+for \shardstoresmrtestsused of the total \shardstoreinputtests tests.
+%Note that though fewer rules were synthesized in a short amount of time
+%compared to the case study in \cref{sec:eval:shardstore},
+%this second synthesis task was not simply a sub-task of the first --- 
+These results demonstrate that \depsynth is resiliant to changes in hardware used by storage systems.
+
 \paragraph{Log-Structured File System.}
-In addition to the \shardstore case study, % in \cref{sec:eval:shardstore},
-we have also used \depsynth
+We have used \depsynth
 to implement a log-structured file system~\cite{rosenblum:lfs}.
 %with support for files and directories.
 The file system supports five standard POSIX operations:

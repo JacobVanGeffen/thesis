@@ -75,7 +75,7 @@ these take up \shardstoreverificationminutes minutes (\shardstoreverificationper
 of the overall search time.
 
 \paragraph{Decomposing crash consistency queries.}
-As \cref{todo} explains, \depsynth offloads a query to an SMT
+As \cref{sec:alg:alg} explains, \depsynth offloads a query to an SMT
 solver when it first encounters a new litmus test to determine
 whether or not the current set of dependency rules satisfy the
 crash consistency property for that test.
@@ -89,9 +89,9 @@ with respect to the current dependency rules,
 the query can take tens of seconds.
 
 Experimentally, we observed that for these queries with long runtimes,
-decomposing the query by concretizing one write-committed variable
-drastically speeds up overall solving time
-(at most \splitvariablebestspeedup \times speedup for a single litmus test).
+decomposing the query by concretizing one or more write-committed variables
+drastically speeds up solving time.
+(averaging $\splitvariableavgspeedup \times$ and at most $\splitvariablebestspeedup \times$ speedup for a single litmus test).
 Specifically, considering the set of write-committed variables $V$,
 the happens-before graph $G\subset V\times V$,
 and the original encoding for the litmus test crash consistency check $P(G)$,
@@ -102,8 +102,14 @@ we choose a variable $v_0\in V$ and issue the following two queries:
 \end{enumerate}
 The litmus test is crash consistent with respect to the dependency rules
 if and only if both queries succeed.
+This concretization can be repeated for any number of variables,
+resulting in $2^n$ queries for $n$ concretized variables.
+Ultimately, this optimization gives a speedup of $\splitvariableoverallspeedup \times$
+for the \shardstore case study discussed in \cref{sec:eval:shardstore},
+reducing end-to-end runtime from \shardstoresynthesistime minutes to \splitvariablenewtime minutes.
 
-Intuitively, this decomposition can result in faster solving times for two reasons.
+\paragraph{Choosing Variables to Concretize.}
+Intuitively, this decomposition results in faster solving times for two reasons.
 First, this optimization can be seen as a pre-processing variable selection step.
 By taking advantage of the relationship between nodes in the happens-before graph
 (which is abstracted away in the constraints sent to the solver),
@@ -116,13 +122,16 @@ Thus, by assigning concrete values to some of those variables,
 constraints representing the crash consistency predicate over the disk state
 may be simplified or eliminated.
 
-\paragraph{Concretizing More Variables.}
-%Specifically, we choose a variable whose corresponding 
-Upon further experimentation, we noticed both that the number of
-concretized variables and the specific variables chosen for concretization
-significantly impacted solving time.
-Ultimately, % TODO chose log n vars such that the most edges were eliminated
-
+With this intuition in mind, we chose concretization variables
+that will most effectively simplify the constraints given to the solver.
+We found that for a litmus test with $N$ writes,
+choosing $log(N)$ variables to concretize gave the best results.
+Moreover, the choice of which variables to concretize is determined by the
+happens-before graph over the litmus test writes
+(w.r.t. \depsynth's current candidate rules set).
+Specifically, we choose the $log(N)$ variables whose corresponding
+node in the happens-before graph has the most ancestors and descendants.
+% TODO elaborate on this?
 
 \if 0
 
