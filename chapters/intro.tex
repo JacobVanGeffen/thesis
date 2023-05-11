@@ -105,9 +105,6 @@ in one of several ways, from testing to manual or automated proofs to code revie
 However, no matter the method for each of these three tasks,
 all pose a significant burden of effort to systems developers.
 
-% In order to ameliorate the burden \todo{continue} Various areas of work have
-% aimed to limit the burdens , 
-
 % How can we make it easier?
 Between these three efforts, system developers repeat encoding the semantics of
 their system: the implementation of the system must adhere to the semantics
@@ -211,21 +208,23 @@ One way these systems enable customization is by
 allowing users to submit custom code for kernel execution
 written in an \textit{in-kernel DSL}.
 Initially designed for network packet filtering, 
-in-kernel DSLs like eBPF \todo{cite} enable kernel extentions
-such as performance monitoring, load balancing, and intrusion detection.\todo{cite https://ebpf.io/case-studies/}
+in-kernel DSLs like eBPF \cite{fleming:ebpf} enable kernel extentions
+such as performance monitoring, load balancing, and intrusion detection
+\cite{engler:vcode,fleming:ebpf,mccanne:bpf}.
 For performance reasons, operating systems use just-in-time (JIT) compilers
 to execute in-kernel DSL programs.
 However,
 % as mentioned previously, % TODO?
-these JIT compilers can be the source of major kernel bugs.\todo{cite}
+these JIT compilers can be the source of major kernel bugs
+\cite{gpz:1454,paul:cve-2020-8835,blazakis:jit-spraying,kocher:spectre}.
 Moreover, writing JIT compilers can pose a substantial effort to developers,
-requiring on the order of thousands of lines of code.\todo{cite}
+requiring on the order of thousands of lines of code.
 
 In \cref{c:jitsynth}, I present \jitsynth, a program synthesis tool that
 automatically generates JIT compilers for in-kernel DSLs
 given a specification of the source and target language.
 Existing work has demonstrated how the correctness of JIT compilers
-can be proven manually\todo{cite},
+can be proven manually\cite{wang:jitk,sobel:ejitk},
 but the effort of such proofs is highly non-trivial.
 By synthesizing JIT compilers, developers both avoid the burden of implementing
 such systems \textit{and} can guarantee correctness
@@ -270,7 +269,7 @@ including costly slowdowns and massive data losses. % TODO make more concrete
 \cref{c:depsynth} presents \depsynth, a tool for automatically generating crash consistency
 code for storage systems.
 \depsynth takes advantage of the observation
-(identified in previous work \todo{cite Featherstitch})
+(identified in \cite{frost:featherstitch})
 that crash consistency mechanisms fundamentally enforce \textit{write-before relationships}.
 To automate crash consistency,
 \depsynth takes as input the implementation of a (non-crash consistent) storage system together
@@ -290,7 +289,7 @@ that allows for both \textit{expressive} and \textit{generalizable} rules.
 Finally, we describe a new search for dependency rules
 directed by input litmus tests.
 These insights enable \depsynth to synthesize dependency rules for an existing
-production key-value store at Amazon\todo{cite shardstore} in 49\todo{macro this} minutes.
+production key-value store at Amazon \cite{bornholt:s3} in \shardstoresynthesistime minutes.
 
 \section{Contributions}
 The remainder of this dissertation is broken into two chapters.
