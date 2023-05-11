@@ -1,0 +1,64 @@
+\chapter{Conclusion}
+% TODO recap
+This dissertation has presented two tools --- \jitsynth and \depsynth\ ---
+along with new metaprogramming abstractions and system decompositions
+that enable the tools to automate system design and implementation for their
+respective domains.
+\cref{c:jitsynth} demonstrated how \jitsynth frames the synthesis task
+as a search for per-instruction compilers over \textit{abstract register machines},
+taking advantage of new minicompiler metasketches to efficiently synthesize
+real-world JITs.
+In \cref{c:depsynth}, we introduced a new \textit{angelic} programming model for
+crash consistency, along with a tool \depsynth that synthesizes
+\textit{dependency rules} to enforce crash consistency under this model.
+We also evaluated \depsynth on \shardstore, a production key-value storage system
+at Amazon, to show the effectiveness of this technique.
+Both works demonstrate the effectiveness of program synthesis in
+designing correct and performant systems.
+
+There is still more work to be done in support of this thesis.
+% TODO better transition sentence
+%In addition to the cases presented, there are many more classes of systems
+%that could benefit from program synthesis tools.
+One interesting direction for work in this area is expanding on \jitsynth
+to allow for some class of compiler optimizations.
+In order to further improve the runtime performance of synthesized compilers,
+\jitsynth could use superoptimization techniques to minimize the size
+of discovered minicompilers.
+Exploring how to best apply these techniques to improve \jitsynth's effectiveness
+would be an interesting direction for future work.
+%One interesting direction for work in this area is
+%automating the implementation of blockchain staking protocols with program synthesis.
+%Existing work has developed techniques for synthesizing more traditional distributed protocols, \todo{cite transit}
+%and properties for staking protocols are specified in a fairly straightforward mannor,
+%but complex required invariants on ___ make implementing staking mechanisms difficult.
+%Automating this implementation step could prevent bugs in these protocols
+%and the massive loss of funds that comes with these exploits.
+Another promising direction lies in further improving \depsynth's usability.
+Existing techniques for litmus test generation and partial interpretation of litmus tests
+\todo{cite crashmonkey and memsynth}
+could allow \depsynth to synthesize dependency rules more quickly.
+% Distributed protocol synthesis: https://www.cis.upenn.edu/~alur/udupa-thesis.pdf
+Finally, my overall thesis would be further supported by a larger
+body of synthesis tools for a wide array of modern systems.
+\cref{c:depsynth} discussed existing works in synthesis for
+techniques for both memory models and distributed protocols,
+but other promising system domains for program synthesis %application
+include blockchain staking protocols and security monitors for IFC kernels.
+%automating the implementation of blockchain staking protocols with program synthesis.
+%Existing work has developed techniques for synthesizing more traditional distributed protocols, \todo{cite transit}
+Properties for staking protocols are specified in a fairly straightforward mannor,
+but complex invariants on the blockchain state make implementing staking mechanisms difficult.
+\todo{cite https://academic.oup.com/rfs/article-abstract/34/3/1156/5868423, https://link.springer.com/chapter/10.1007/978-3-319-67816-0_17, https://link.springer.com/chapter/10.1007/978-3-319-63688-7_12}
+Automating this implementation step could prevent bugs in staking protocols
+and the massive loss of funds that comes with these exploits.
+Information flow control (IFC) kernels give developers the ability to enforce
+a variety of security properties by limiting the information flow between applications.
+However, correctly implementing these restrictions is prohibitively difficult.
+Existing work enables push-button verification of these security properties for IFC kernels,\todo{cite}
+but still requires a manually-written implementation.
+By synthesizing security monitors for IFC kernels that guarantee these properties,
+the high implementation burden for IFC security could be removed entirely.
+Overall, program synthesis tools can help systems developers build correct, performant software
+more effectively and easily for a wide spectrum of system domains.
+
