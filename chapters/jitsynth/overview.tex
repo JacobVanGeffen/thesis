@@ -81,7 +81,7 @@ for all registers $r$ and memory addresses $a$.\tighten
 \centering
 \resizebox{\linewidth}{!}{%
 \begin{minipage}{1.03\linewidth}
-\lstinputlisting[language=rosette,xleftmargin=-.5em,firstline=1,basicstyle=\scriptsize\ttfamily]{code/toy-inputs.rkt}%multicols=2,numbers=left,numbersep=.75em,
+\lstinputlisting[language=rosette,xleftmargin=-.5em,firstline=1]{code/toy-inputs.rkt}%multicols=2,numbers=left,numbersep=.75em,
 \end{minipage}}
 \vspace{-.5em}
   \caption{Snippets of inputs to \jitsynth: the interpreters for the source (eBPF) and and target (RISC-V) languages and state-mapping functions.}
@@ -137,7 +137,7 @@ We can solve this problem by asking the host synthesizer to search for
 $C_\cc{addi32}$ in a space of candidate \minicompilers of length $k$. We
 describe this space with a syntactic template, or a \emph{sketch}, as shown below:
 
-\begin{lstlisting}[language=rosette,xleftmargin=0em,mathescape=true,basicstyle=\scriptsize\ttfamily]
+\begin{lstlisting}[language=rosette,xleftmargin=0em,mathescape=true]
 (define (compile-addi32 s)       ; Returns a list of k instruction holes, to be 
   (define dst (ebpf-insn-dst s)) ; filled with toy RISC-V instructions. Each    
   (define imm (ebpf-insn-imm s)) ; hole represents a set of choices, defined 
@@ -167,7 +167,7 @@ satisfies the specification.
 Below is an example of the resulting toy compiler from eBPF to
 RISC-V, synthesized and translated to C by \jitsynth (without the
 outer loop):\tighten
-\lstinputlisting[language=C,xleftmargin=2em,firstline=1,basicstyle=\scriptsize\ttfamily]{code/toy-compiler.c}%multicols=2,numbers=left,numbersep=.75em,
+\lstinputlisting[language=C,xleftmargin=2em,firstline=1]{code/toy-compiler.c}%multicols=2,numbers=left,numbersep=.75em,
 
 Once we know how to synthesize a compiler of length $k$, we can easily extend
 this solution into a naive method for synthesizing a compiler of any length. We
