@@ -8,7 +8,16 @@ the \jitsynth implementation searches these spaces in parallel~\cite{bornholt:sy
 %In addition, \jitsynth implements several optimizations
 %in order to synthesize real-world JIT compilers, as follows.
 %
-\if 0
+%
+%\paragraph{ARM Fuel Function.}
+%For simplicity,
+We use $\Phi(\vec{p}) = \texttt{length}(\vec{p})$ as the fuel function for all
+languages studied in this paper. This provides sufficient fuel for evaluating
+programs in these languages that are accepted by the OS kernel. For example, the
+Linux kernel requires eBPF programs to be loop-free, and it enforces this
+restriction with a conservative static check; programs that fail the check are
+not passed to the JIT~\cite{gershuni:crab-ebpf}.
+
 \paragraph{Synthesizing Common Sequences.}
 In addition to separately synthesizing pre-loads for parameters,
 \jitsynth also synthesizes a few other small sequences used commonly in compiled programs.
@@ -49,14 +58,4 @@ of the largest \minicompiler.
 To mitigate the performance impact this incurs, we implemented a trusted compiler
 pass that removes the NOP instructions while preserving the correctness of
 the compiled code.
-\fi
-%
-%\paragraph{ARM Fuel Function.}
-%For simplicity,
-We use $\Phi(\vec{p}) = \texttt{length}(\vec{p})$ as the fuel function for all
-languages studied in this paper. This provides sufficient fuel for evaluating
-programs in these languages that are accepted by the OS kernel. For example, the
-Linux kernel requires eBPF programs to be loop-free, and it enforces this
-restriction with a conservative static check; programs that fail the check are
-not passed to the JIT~\cite{gershuni:crab-ebpf}.
 \tighten

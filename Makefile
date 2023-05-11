@@ -1,6 +1,6 @@
 PAPER = thesis
-TEX = $(wildcard *.tex)
-BIB = chapters/jitsynth/n.bib chapters/depsynth/n.bib chapters/depsynth/p.bib
+TEX = $(wildcard *.tex chapters/*.tex chapters/jitsynth/*.tex chapters/depsynth/*.tex)
+BIB = thesis-no-conf.bib n-conf.bib
 FIGS = $(wildcard figs/*.pdf figs/*.pgf figs/*.png figs/*.tex code/* data/*.tex)
 
 .PHONY: all clean nr spell
