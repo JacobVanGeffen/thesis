@@ -44,7 +44,7 @@ edges which \emph{must} be in the happens-before graph---%
 and uses that set to short-circuit \crashconsistentalg.
 
 \subsection{Attempting graph search with a \tord solver.}
-One bottleneck \depsynth
+One bottleneck in \depsynth
 comes from the time it takes to search for a minimal
 happens-before graph for a given litmus test.
 This section describes a strategy that we explored to limit this bottleneck.
@@ -68,7 +68,7 @@ and the heuristics over prioritizing program order help mitigate the runtime cos
 there remains space for further improvement.
 
 In an attempt to speed up the overall search time for total orders over writes,
-we encode the problem in $\tord$ and offloading to a $\tord$ solver.
+we encode the problem in $\tord$ and offload to a $\tord$ solver.
 $\tord$ defines predicates for describing partial-ordering constraints
 on reads and writes for multi-threaded programs, % TODO
 but can also be used to describe orderings of storage system writes.
@@ -89,7 +89,7 @@ determining a total order over writes for single litmus tests.
 However, by doing so, we empirically found that the solver
 slightly diminished the performance of \depsynth for all three of our evaluated case studies
 (in the case of \shardstore, slowing the rules search from
-\shardstoresynthesistime minutes to \shardstoresynthesistimetord minutes).
+\shardstoresynthesistime to \shardstoresynthesistimetord).
 Intuitively, we believe this performance degredation is an artifact of 
 bad initial assignments from the SAT solver
 and a resulting a large number of iterations in the DPLL(T) loop.
@@ -111,7 +111,7 @@ However, for each litmus test in the input set, \depsynth
 must perform a check that the accumulated dependency rules
 guarantee the crash consistency of the test.
 For synthesizing rules in \shardstore,
-these take up \shardstoreverificationminutes minutes (\shardstoreverificationpercent\%)
+these take up \shardstoreverificationminutes (\shardstoreverificationpercent)
 of the overall search time.
 
 \paragraph{Decomposing crash consistency queries.}
@@ -146,7 +146,7 @@ This concretization can be repeated for any number of variables,
 resulting in $2^n$ queries for $n$ concretized variables.
 Ultimately, this optimization gives a speedup of $\splitvariableoverallspeedup \times$
 for the \shardstore case study discussed in \cref{sec:eval:shardstore},
-reducing end-to-end runtime from \shardstoresynthesistime minutes to \splitvariablenewtime minutes.
+reducing end-to-end runtime from \shardstoresynthesistime to \splitvariablenewtime.
 
 \paragraph{Choosing Variables to Concretize.}
 Intuitively, this decomposition results in faster solving times for two reasons.

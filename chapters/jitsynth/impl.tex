@@ -37,17 +37,6 @@ and write to the PC from a register value.
 These operations are needed for compiling jumps,
 and are reused in many \minicompilers.
 
-\paragraph{PC Equivalence.}
-To determine the equivalence function between the source and target PC,
-\jitsynth considers both the user-input PC multiple $m_{\PC}$,
-as well as the length of each \minicompiler $L$.
-Specifically, we say that source $\PC_S$ and target $\PC_T$
-are equivalent when $\PC_S \times L \times m_{\PC} = \PC_T$.
-To avoid arithmetic overflow,
-\jitsynth bounds the maximum value of the $\PC_S$ to
-$\lfloor\frac{2^B}{L \times m_{\PC}}\rfloor$,
-where $B$ is the bitlength of the source PC.
-
 \paragraph{NOP Padding and Removal.}
 \jitsynth synthesizes \minicompilers of equal length to ensure that
 the target PC for jumps can be computed as a multiple of the source PC.
