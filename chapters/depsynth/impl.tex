@@ -43,22 +43,62 @@ pre-compute a set of \emph{necessary} ordering edges---%
 edges which \emph{must} be in the happens-before graph---%
 and uses that set to short-circuit \crashconsistentalg.
 
-\paragraph{Attempting graph search with a \tord solver.}
-One bottleneck in the time \depsynth takes to find a complete set of
-dependency rules comes from the time it takes to search for a minimal
+\subsection{Attempting graph search with a \tord solver.}
+One bottleneck \depsynth
+comes from the time it takes to search for a minimal
 happens-before graph for a given litmus test.
-This section explores a strategy that we explored to limit this bottleneck.
+This section describes a strategy that we explored to limit this bottleneck.
 Specifically, we encode the happens-before graph search problem
-in the theory of ordering consistency (\tord)\todo{cite}
-and execute the search with an existing \tord solver.
+in the theory of ordering consistency ($\tord$) \cite{n:tord}
+and execute the search with an existing $\tord$ solver.
 Ultimately, we found that this different search strategy did not 
 improve the overall runtime, but we find this negative
 result worth reporting.
 
-% TODO elaborate on \tord
-
 % TODO present results
-Intuitively, % TODO discuss why this didn't work
+As described in \cref{sec:alg:onetest}, the \rulesfortest algorithm
+finds dependency rules for a litmus test by searching for a total order over writes,
+reducing the total order to a minimal happens-before graph,
+then generalizing that graph into rules.
+The reduction to graph and generalization into rules steps are both straightforward,
+but since the space of possible total orders grows exponentially with the number of writes,
+finding valid orders over writes can be exceedingly slow for large tests.
+While the pruning techniques presenting in \cref{sec:alg}
+and the heuristics over prioritizing program order help mitigate the runtime cost of this search,
+there remains space for further improvement.
+
+In an attempt to speed up the overall search time for total orders over writes,
+we encode the problem in $\tord$ and offloading to a $\tord$ solver.
+$\tord$ defines predicates for describing partial-ordering constraints
+on reads and writes for multi-threaded programs, % TODO
+but can also be used to describe orderings of storage system writes.
+Specifically, $\tord$ introduces the predicate $\prec$, where
+$ w_i \prec w_j $ encodes the fact that write $w_i$ occured before
+write $w_j$.
+To encode our search in $\tord$,
+we describe the existence of each happens-before graph edge
+between write events $e_i$ and $e_j$ as the boolean variable $d_{ij}$,
+then introduce the following constraint: $ d_{ij} \rightarrow e_i \prec e_j $.
+By solving these constraints along with the user-defined constraints specifying
+crash consistency for the storage system, we arrive at a total order over all
+writes for the given litmus test.
+
+Existing work defines a DPLL(T)-style solver for $\tord$ \cite{n:tord},
+which we use for solving the constraints specified above and
+determining a total order over writes for single litmus tests.
+However, by doing so, we empirically found that the solver
+slightly diminished the performance of \depsynth for all three of our evaluated case studies
+(in the case of \shardstore, slowing the rules search from
+\shardstoresynthesistime minutes to \shardstoresynthesistimetord minutes).
+Intuitively, we believe this performance degredation is an artifact of 
+bad initial assignments from the SAT solver
+and a resulting a large number of iterations in the DPLL(T) loop.
+For storage systems with increasingly complex behavior,
+\depsynth may require much larger litmus tests,
+which may make the benefits of searching for orders with $\tord$ more apparent.
+However, for the case studies considered in this paper,
+we found our original search algorithm from \cref{sec:alg:onetest}
+to outperform the $\tord$-directed search.
 
 \subsection{Faster Consistency Checks for Litmus Tests}
 \label{s:improved-search}
