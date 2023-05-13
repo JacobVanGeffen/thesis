@@ -20,7 +20,7 @@ the incorrect behavior of in-kernel compilers can subject the tens of millions o
 Linux users to a slew of vulnerabilities.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-Like software development for any domain, systems software development requires
+Like software development for any domain, systems software development involves
 three fundamental tasks:
 \textbf{specifying} correct behavior at a high level,
 \textbf{implementing} the system at a low level,
@@ -33,11 +33,11 @@ hardware layers of the operating system.
 This means that manually implementing and verifying systems software requires
 a high amount of effort from the developer, who must reason about the multiple abstraction
 layers in addition to the execution of their implemented system.
-Additionally, stringent requirements on performance for systems
+Additionally, stringent requirements on performance of systems software
 further increase the difficulty of implementation and verification.
 
-A well-studied technique for reducing the burden of both implementation
-and verification from software designers is \textit{program synthesis}.
+A well-studied technique for reducing the burden of software implementation
+and verification is \textit{program synthesis}.
 Program synthesis is an automated programming technique
 that takes advantage of overlapping semantics between the three tasks described above
 in order to automate software implementation and verification. 
@@ -61,10 +61,10 @@ as well as any possible reorderings of those writes made by the disk hardware.
 Moreover, demands on the performance of systems further complicate this task,
 restricting the space of acceptable outputs from a systems synthesis tool.
 
-To overcome these unique challenges, this dissertation presents a variety of novel
+To overcome these challenges, this dissertation presents novel
 \textit{system decomposition} and \textit{metaprogramming abstraction} techniques.
 %In this work, I identify two key observations that enable the creation of synthesis tools
-\textbf{Program decomposition} allows synthesis tools to generate smaller target programs.
+\textbf{System decomposition} allows synthesis tools to generate smaller target programs.
 By considering systems as a conjunction of smaller pieces,
 synthesis tools can search for candidate programs that implement a single piece.
 The resulting synthesized program can be combined with either user-written code or
@@ -77,6 +77,7 @@ By reasoning about these simpler abstractions rather than the complex systems di
 synthesis tools are able to more efficiently search over candidate programs.
 % JitSynth: design metasketch to describe common minicompiler patterns (TODO)
 % DepSynth: design rules language to describe any runtime dependencies (TODO)
+% TODO takeout the I here?
 In the next two sections, I describe how these observations enabled the creation of
 synthesis tools for both in-kernel JIT compliers and for crash consistent storage systems.
 
@@ -208,7 +209,7 @@ One way these systems enable customization is by
 allowing users to submit custom code for kernel execution
 written in an \textit{in-kernel DSL}.
 Initially designed for network packet filtering, 
-in-kernel DSLs like eBPF \cite{fleming:ebpf} enable kernel extentions
+in-kernel DSLs like eBPF \cite{fleming:ebpf} enable kernel extensions
 such as performance monitoring, load balancing, and intrusion detection
 \cite{engler:vcode,fleming:ebpf,mccanne:bpf}.
 For performance reasons, operating systems use just-in-time (JIT) compilers
@@ -220,12 +221,12 @@ these JIT compilers can be the source of major kernel bugs
 Moreover, writing JIT compilers can pose a substantial effort to developers,
 requiring on the order of thousands of lines of code.
 
-In \cref{c:jitsynth}, I present \jitsynth, a program synthesis tool that
+\cref{c:jitsynth} presents \jitsynth, a program synthesis tool that
 automatically generates JIT compilers for in-kernel DSLs
 given a specification of the source and target language.
 Existing work has demonstrated how the correctness of JIT compilers
 can be proven manually\cite{wang:jitk,sobel:ejitk},
-but the effort of such proofs is highly non-trivial.
+but the effort of such proofs is non-trivial.
 By synthesizing JIT compilers, developers both avoid the burden of implementing
 such systems \textit{and} can guarantee correctness
 without requiring intensive proofs.
@@ -256,8 +257,8 @@ From Linux file systems to large cloud-based key-value stores,
 storage systems must maintain the integrity of their data
 even in the presence of system crashes.
 This property of storage systems is known as \textit{crash consistency}.
-Guaranteeing crash consistency is a highly non-trivial task for developers,
-as it requires maintaining complex invariants that depend greatly on
+Guaranteeing crash consistency is a challenging task for developers,
+as it requires maintaining complex invariants that depend on
 storage system implementation details.
 Moreover, failing to guarantee crash consistency may result in severe impacts,
 including costly slowdowns and massive data losses. % TODO make more concrete
@@ -307,10 +308,9 @@ which specify required write-before relationships for a storage system
 at runtime. This abstraction over write-before relationships, along
 with a new per-litmus-test search, allows \depsynth to synthesize
 correct dependency rules for a production system.
-Moreover, these generated rules have nearly the same effect on performance
+Moreover, the generated rules have nearly the same effect on performance
 as dependencies hand-written by experts.
-
-Both of these chapters demonstrate
+These contributions demonstrate
 how program synthesis can aid developers in building
 correct and performant systems.
 
