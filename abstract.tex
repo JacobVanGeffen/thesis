@@ -1,34 +1,34 @@
 Implementing and verifying the correctness of systems software
-poses a uniquely difficult challenge for developers.
-Generally, systems operate across multiple
-levels of abstraction, requiring system designers to reason about the
+poses a difficult challenge for developers.
+Systems software operates across multiple
+levels of abstraction, requiring developers to reason about the
 interactions between these abstraction layers.
-At the same time, ensuring correctness for these systems is now
+At the same time, ensuring correctness of these systems is now
 more important than ever.
-Linux kernel vulnerabilities in can allow malicious users to gain root access
+Linux kernel vulnerabilities can allow malicious users to gain root access
 in critical systems, and incorrectly implemented cloud storage systems
 can harm data availability for millions of users.
 
 This dissertation presents two novel \textit{program synthesis} tools
 that automate the implementation and verification of two classes of systems:
 in-kernel just-in-time (JIT) compilers and crash consistent storage systems.
-The first of these tools --- \jitsynth\ --- allows kernel developers to automatically
+The first of these tools, \jitsynth, allows kernel developers to automatically
 generate correct in-kernel JIT compilers by giving a specification of the source and target language.
 These JITs translate user-submitted programs to lower-level assembly code for kernel execution.
-Manually implementing (and proving correctness for) these JITs poses a difficult challenge for developers
+Manually implementing (and proving correctness of) these JITs poses a difficult challenge for developers
 due to subtle differences in the semantics of the source and target languages.
 %allowing kernel users to submit code in this DSL for execution by the kernel.
 %Bugs in these JITs can allow non-priviledged users to execute arbitrarily malicious code in the kernel.
 %However, due to subtle differences in the semantics of in-kernel DSLs and assembly languages,
 %manually constructing (and proving correctness for) these JITs poses a difficult challenge for developers.
 By synthesizing JITs automatically, \jitsynth allows developers to avoid kernel-breaking bugs
-without the massive effort of implementing and verifying the compiler.
-The second tool presented --- \depsynth\ --- enables storage system developers to
+without the massive effort of implementing and verifying a new compiler for each target architecture.
+The second tool presented, \depsynth, enables storage system developers to
 automatically add crash consistency mechanisms to their systems.
 %For storage systems, crash consistency is important for ensuring 
 %that stored data is not lost or corrupted during system crashes.
 Designing crash consistent systems is difficult for developers because it
-requires reasoning about complex constraints on the order of storage system writes.
+requires reasoning about complex constraints on the orderings of storage system writes.
 \depsynth allows developers to reap the data availability and resiliency benefits of crash consistency
 without the overhead of manually reasoning about these orderings.
 Together, these tools demonstrate the effectiveness of program synthesis for developing systems software.
