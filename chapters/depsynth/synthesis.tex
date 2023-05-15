@@ -284,8 +284,9 @@ removing any rule would incorrectly allow reordering of its corresponding edge(s
 %\todo{these are long sentences, perhaps we should just do three thms and proof sketches}
 
 \begin{example}\label{sec:alg:example}
+  \normalfont
 Consider running \rulesfortest for the simple log-structured key-value store
-and \texttt{SingleEntry_TwoAppend} litmus test from \cref{s:overview}.
+and \texttt{SingleEntry_TwoAppend} litmus test from \cref{depsynth:s:overview}.
 From \cref{sec:problem:example} we know that this test produces a set \wr of four writes:
 %
 \begin{align*}
@@ -343,7 +344,7 @@ From here, the loop in \phasetwo now tries to remove each of the three remaining
 but each attempted $\gr'$ violates crash consistency and so returns $\bot$ from the next recursive call.
 \phasetwo therefore exits the loop with the above graph \gr,
 which we now know is minimal as no further edges can be removed.
-Applying \rulesforgraph to \gr yields the two rules from \cref{s:overview}:
+Applying \rulesforgraph to \gr yields the two rules from \cref{depsynth:s:overview}:
 \begin{align*}
     \deprule{\textsf{superblock}&}{\textsf{log}}{=} & \text{ from edges } (w_3, w_4) \text{ and } (w_1, w_2) \\
     \deprule{\textsf{superblock}&}{\textsf{superblock}}{>} & \text{ from edge } (w_2, w_4).

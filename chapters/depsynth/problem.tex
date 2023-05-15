@@ -460,7 +460,8 @@ $\consistent{\run{\evaluate{P_\emph{main}}{\mathcal{O}}}{\vec{s}}{d_\emph{initia
 \end{definition}
 
 \begin{example}\label{sec:problem:example}
-Consider the \texttt{SingleEntry_TwoAppend} litmus test from \cref{s:overview}.
+  \normalfont
+Consider the \texttt{SingleEntry_TwoAppend} litmus test from \cref{depsynth:s:overview}.
 Interpreting the initial and main programs gives two traces:
 %
 \begin{align*}
@@ -473,7 +474,7 @@ Interpreting the initial and main programs gives two traces:
 \end{align*}
 %
 Let $\vec{s} = [s_1, s_2, s_3, s_4]$ be a crash schedule for $P_\emph{main}$.
-Applying the two synthesized rules from \cref{s:overview}
+Applying the two synthesized rules from \cref{depsynth:s:overview}
 restricts the valid crash schedules (\cref{def:valid-schedule}):
 %
 \begin{itemize}
@@ -544,7 +545,7 @@ $[s_1 = \top, s_2 = \top, s_3 = \top, s_4 = \bot]$\\
 \end{enumerate}
 %
 Each of these states satisfies the key-value store's crash-consistency predicate $\consistent{d}$
-defined in \cref{s:overview},
+defined in \cref{depsynth:s:overview},
 as in each case the superblock's \texttt{head} and \texttt{tail} pointers
 refer only to log blocks that are also on disk.
 Some states result in data loss after the crash---%

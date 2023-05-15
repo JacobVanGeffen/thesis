@@ -87,7 +87,7 @@ operators, as well as scratch registers.\tighten
 
 The space of such programs is intractably large, however, even for small inputs.
 For instance, it includes at least $2^{350}$ programs of length $k=5$ and depth
-$d\leq 3$ for the toy example from \autoref{s:overview}. \jitsynth therefore
+$d\leq 3$ for the toy example from \autoref{jitsynth:s:overview}. \jitsynth therefore
 employs two effective heuristics to direct the exploration of this space toward
 the most promising candidates first, as defined by the read-write and pre-load
 sketches.\tighten 
@@ -130,7 +130,7 @@ functionality, so a source instruction $\iota$ can often be emulated with target
 instructions that access the same parts of the state as $\iota$. For example,
 the \cc{addi32} instruction from eBPF reads and writes only registers (not,
 e.g., memory), and it can be emulated with RISC-V instructions that also touch
-only registers (\autoref{s:overview}). Moreover, note that the semantics of
+only registers (\autoref{jitsynth:s:overview}). Moreover, note that the semantics of
 \cc{addi32} ignores the values of its $\mathid{src}$ and $\mathid{off}$
 fields, and that the target RISC-V instructions do the same. Based on these
 observations, our optimized sketch for \cc{addi32} would therefore consists of
@@ -194,7 +194,7 @@ can produce different outputs when applied to the same input state.\tighten
 \jitsynth computes all read and write sets from their definitions, by using the
 host symbolic evaluator to reduce the reasoning about instruction semantics to
 SMT queries. This reduction is possible because we assume that all ARM
-interpreters are self-finitizing, as discussed in \autoref{s:overview}.
+interpreters are self-finitizing, as discussed in \autoref{jitsynth:s:overview}.
 
 \begin{definition}[State Labels]\label{def:state-labels} 
   A \emph{state label} is an identifier $L_n$ where $n$ is a state component,

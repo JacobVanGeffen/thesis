@@ -38,12 +38,15 @@ for inserting \texttt{fsync} calls into litmus tests to make them crash consiste
 but instead focuses on making the \emph{storage system itself} crash consistent
 rather than the user code running on top of it.
 CrashMonkey~\cite{mohan:crashmonkey} is a tool for finding crash-consistency bugs in Linux file systems.
+Chipmunk~\cite{leblanc:chipmunk} extends the CrashMonkey approach to persistent-memory file systems
+by exploring finer-grained crash states to account for the byte-addressable nature of non-volatile memory.
 CrashMonkey exhaustively enumerates all litmus tests with a given set of system calls,
 runs them against the target file system,
 and then tests each possible crash state for consistency.
 Connecting CrashMonkey-like litmus test generation with \depsynth
 could provide developers with a comprehensive set of litmus tests for their system for free,
 lowering the burden of applying \depsynth.
+To give stronger coverage guarantees that do not depend on enumerating litmus tests,
 FiSC~\cite{yang:fisc} and eXplode~\cite{yang:explode}
 use model checking to find bugs in storage systems.
 
@@ -51,7 +54,7 @@ One advantage of bug-finding tools is that they are significantly easier to appl
 than heavyweight verification tools.
 Bornholt et al. \cite{bornholt:s3} describe the use of lightweight formal methods
 to validate the crash consistency (and other properties)
-of ShardStore, a key-value store for Amazon S3.
+of ShardStore, the Amazon S3 storage node that we study in Section~\ref{sec:eval:shardstore}.
 Their approach applies property-based testing to automatically find and minimize litmus tests
 that demonstrate crash-consistency issues.
 \depsynth takes this idea one step further by automatically \emph{fixing} such issues once they are found.

@@ -127,9 +127,8 @@ to achieve good performance on the underlying hardware
 as long as it respects the dependency rules.
 
 We evaluate the effectiveness and utility of \depsynth
-in a case study that applies it to a production key-value store
-developed by a major commercial cloud provider.%
-\footnote{Anonymized for double-blind review.}
+in a case study that applies it to \shardstore~\cite{bornholt:s3},
+a production key-value store used by the Amazon S3 object storage service.
 We show that \depsynth can rapidly synthesize dependency rules for this storage system.
 By comparing those rules to the key-value store's existing crash-consistency behavior,
 we find that \depsynth achieves similar results to rules hand-written by experts,
@@ -151,7 +150,7 @@ In summary, this paper makes three contributions:
 
 \noindent
 The remainder of this paper is organized as follows.
-\cref{s:overview} gives a walk-through of building a simple storage system with \depsynth.
+\cref{depsynth:s:overview} gives a walk-through of building a simple storage system with \depsynth.
 \cref{sec:problem} defines the \depsynth programming model, including labeled writes and dependency rules.
 \cref{sec:alg} describes the \depsynth synthesis algorithm for inferring dependency rules,
 and \cref{s:impl} details \depsynth's implementation in Rosette.
@@ -240,7 +239,7 @@ To summarize, this paper makes the following contributions:
 \end{enumerate}
 
 The rest of this paper is organized as follows.
-\autoref{s:overview} illustrates how developers use \depsynth to construct a basic crash consistent storage system.
+\autoref{depsynth:s:overview} illustrates how developers use \depsynth to construct a basic crash consistent storage system.
 \autoref{s:problem} formalizes the dependency rule synthesis problem.
 \autoref{s:algorithm} presents the \depsynth algorithm for searching for rules over a set of litmus tests.
 \autoref{s:impl} provides implementation details.

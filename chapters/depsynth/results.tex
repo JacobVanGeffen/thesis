@@ -12,10 +12,8 @@ This section answers three questions to demonstrate the effectiveness of \depsyn
 
 To show that developers can use \depsynth to build realistic storage systems, 
 %instead of writing their own manual crash-consistency implementation,
-we implemented a key-value store that follows the design of \shardstore%
-\footnote{Anonymized for double-blind review.}~%
-\cite{bornholt:s3-anon},
-a key-value store operating in production for a major commercial cloud object storage service.
+we implemented a key-value store that follows the design of \shardstore~\cite{bornholt:s3},
+the exabyte-scale production storage node for the Amazon S3 object storage service.
 
 \paragraph{Implementation.}
 The first step in using \depsynth is to implement the storage system itself.
