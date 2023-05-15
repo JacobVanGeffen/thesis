@@ -1,0 +1,21 @@
+\begin{algorithmic}[1]
+\algrestore{depsynth}
+
+\Function{\rulesforgraph}{\gr}  \Comment{Generalize a happens-before graph into dependency rules}  \label{fig:rules:rulesforgraph}
+    \State $\ruleset \gets \{\}$
+    \For{$(w_1, w_2) \in \gr$}
+        \State $\langle n_1, t_1 \rangle \gets \Call{Label}{w_1}$  \Comment{Get label $l_1 = \langle n_1, t_1 \rangle$ for write $w_1 = \texttt{write}(a_1, s_1, l_1)$}
+        \State $\langle n_2, t_2 \rangle \gets \Call{Label}{w_2}$
+        \If{$t_1 < t_2$}
+            \State $\ruleset \gets \ruleset \cup \{ \deprule{n_2}{n_1}{>} \}$  \Comment{Invert the order, as a rule $\deprule{n_a}{n_b}{p}$ says $n_a$ happens \textbf{after} $n_b$}
+        \ElsIf{$t_1 = t_2$}
+            \State $\ruleset \gets \ruleset \cup \{ \deprule{n_2}{n_1}{=} \}$
+        \Else
+            \State $\ruleset \gets \ruleset \cup \{ \deprule{n_2}{n_1}{<} \}$
+        \EndIf
+    \EndFor
+    \State \Return \ruleset
+\EndFunction 
+
+\algstore*{depsynth}
+\end{algorithmic}

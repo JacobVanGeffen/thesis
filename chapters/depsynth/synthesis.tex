@@ -124,6 +124,14 @@ and solves the resulting formulas using an off-the-shelf SMT solver~\cite{niemet
     \label{fig:alg:rulesfortests}
 \end{figure}
 
+\begin{figure}
+    \centering
+    {\xsmall\input{figs/rulesforgraph.tex}}
+    \caption{The procedure for generalizing a happens-before graph \gr into dependency rules
+    constructs (at most) one rule for each edge.}
+    \label{fig:alg:rulesforgraph}
+\end{figure}
+
 The core of the \depsynthalg algorithm is the
 \rulesfortest procedure in \cref{fig:alg:rulesfortests},
 which takes as input a litmus test \test,
@@ -229,7 +237,7 @@ it is complete---if an acyclic solution exists, \phasetwo will reach it.\tighten
 \paragraph{Generating rules from happens-before graphs.}
 The \rulesfortest search operates on happens-before graphs,
 but its goal is to synthesize dependency rules (\cref{def:dependency-rule}).
-The \rulesforgraph procedure (line~\ref{fig:rules:rulesforgraph})
+The \rulesforgraph procedure (\cref{fig:alg:rulesforgraph})
 bridges this gap
 by taking as input a happens-before graph \gr
 and returning a set of dependency rules \ruleset
