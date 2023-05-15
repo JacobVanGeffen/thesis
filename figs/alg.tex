@@ -31,7 +31,8 @@
 
 \vspace{0.8em}
 
-\Function{\crashconsistentalg}{$\test = \langle P_\emph{initial}, P_\emph{main} \rangle$, \ruleset, \impl, \consist}  \Comment{Check Def.~\ref{def:crash-consistent} with an SMT solver}  \label{alg:depsynth:cc}
+\Comment{Check Def.~\ref{def:crash-consistent} with an SMT solver}
+\Function{\crashconsistentalg}{$\test = \langle P_\emph{initial}, P_\emph{main} \rangle$, \ruleset, \impl, \consist}  \label{alg:depsynth:cc}
     \State $d_\emph{initial} \gets \run{\evaluate{P_\emph{initial}}{\mathcal{O}}}{\vec{\top}}{d_0}$
     \State \Return $\forall \vec{s}.\ \valid{\vec{s}}{P_\emph{main}}{R} \Rightarrow \consistent{\run{\evaluate{P_\emph{main}}{\mathcal{O}}}{\vec{s}}{d_\emph{initial}}}$
 \EndFunction

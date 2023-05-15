@@ -43,7 +43,7 @@ and require the set of synthesized dependency rules \ruleset to be \emph{acyclic
 
 \begin{figure}
     \centering
-    {\xsmall\input{figs/alg.tex}}
+    {\input{figs/alg.tex}}
     \caption{The \depsynth algorithm takes as input a storage system implementation $\sys$,
     a set of litmus tests \tests, and a crash-consistency predicate $\textrm{\emph{Consistent}}$,
     and returns an acyclic set of dependency rules that make all tests in \tests crash consistent (\cref{def:crash-consistent}).
@@ -116,20 +116,13 @@ and solves the resulting formulas using an off-the-shelf SMT solver~\cite{niemet
 
 \begin{figure}
     \centering
-    {\xsmall\input{figs/rules.tex}}
+    {\input{figs/rules.tex}}
     \caption{The algorithm for generating sufficient dependency rules for a litmus test \test
     searches the space of happens-before graphs over the writes performed by \test.
     The first phase searches for total orders over the writes that are sufficient for crash consistency.
-    Once such a total order is found, the second phase removes edges from it until the happens-before graph is minimal.}
+    Once such a total order is found, the second phase (shown in \autoref{fig:alg:phase2}) removes edges
+    from it until the happens-before graph is minimal.}
     \label{fig:alg:rulesfortests}
-\end{figure}
-
-\begin{figure}
-    \centering
-    {\xsmall\input{figs/rulesforgraph.tex}}
-    \caption{The procedure for generalizing a happens-before graph \gr into dependency rules
-    constructs (at most) one rule for each edge.}
-    \label{fig:alg:rulesforgraph}
 \end{figure}
 
 The core of the \depsynthalg algorithm is the
@@ -220,9 +213,17 @@ can succeed either, so the prefix is safe to prune.
 \phaseone continues until every write has been added to the total order
 and then moves to \phasetwo to further reduce the happens-before graph.\tighten
 
+\begin{figure}
+    \centering
+    {\input{figs/phase2.tex}}
+    \caption{The second phase of the dependency rules generation algorithm. This phase
+    greedily removes edges to from the happens-before graph to arrive at a minimal graph.}
+    \label{fig:alg:phase2}
+\end{figure}
+
 \paragraph{Partial order search.}
 Starting from a happens-before graph \gr that reflects a total order over all writes in \test,
-\phasetwo (line~\ref{fig:rules:phase2})
+\phasetwo (\autoref{fig:alg:phase2})
 removes edges from the graph until it is minimal,
 i.e., removing any further edges would violate crash consistency.
 \phasetwo removes one edge at a time from the graph \gr (line~\ref{fig:rules:phase2remove}),
@@ -233,6 +234,14 @@ By greedily removing one edge at a time,
 and because \phasetwo considers removing every possible edge from \gr
 (except those that cannot lead by solutions by \cref{thm:synthesis:monotonicity}),
 it is complete---if an acyclic solution exists, \phasetwo will reach it.\tighten
+
+\begin{figure}
+    \centering
+    {\input{figs/rulesforgraph.tex}}
+    \caption{The procedure for generalizing a happens-before graph \gr into dependency rules
+    constructs (at most) one rule for each edge.}
+    \label{fig:alg:rulesforgraph}
+\end{figure}
 
 \paragraph{Generating rules from happens-before graphs.}
 The \rulesfortest search operates on happens-before graphs,
