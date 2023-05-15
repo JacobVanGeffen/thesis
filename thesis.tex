@@ -56,40 +56,40 @@
 
 %\usepackage{listings}
 \usepackage[procnames]{listings}          % format code
-\lstset{
-  columns=fullflexible,
-  keepspaces=true,
-  showstringspaces=false,
-  stringstyle=\slshape\color{green!40!black},
-  basicstyle=\ttfamily\small,
-  language=Python,
-  morekeywords={*, self},
-  commentstyle=\slshape\color{black!60},
-  tabsize=2,
-}
-
-\lstdefinelanguage{Rust}{
-  sensitive,
-  morecomment=[l]{//},
-  morecomment=[s]{/*}{*/},
-  moredelim=[s][{\itshape\color[rgb]{0,0,0.75}}]{\#[}{]},
-  morestring=[b]{"},
-  alsodigit={},
-  alsoother={},
-  alsoletter={!},
-  % keywords
-  otherkeywords={=>},
-  morekeywords={break, continue, else, for, if, in, loop, match, return, while},
-  morekeywords={as, const, let, move, mut, ref, static, unsafe},
-  morekeywords={dyn, enum, fn, impl, Self, self, struct, trait, type, use, where},
-  morekeywords={crate, extern, mod, pub, super},
-  morekeywords={abstract, alignof, become, box, do, final, macro,
-    offsetof, override, priv, proc, pure, sizeof, typeof, unsized, virtual, yield},
-  % traits
-  morekeywords=[2]{Send},
-  % types
-  morekeywords=[3]{bool, char, f32, f64, i8, i16, i32, i64, isize, str, u8, u16, u32, u64, unit, usize, i128, u128},
-}%
+%\lstset{
+%  columns=fullflexible,
+%  keepspaces=true,
+%  showstringspaces=false,
+%  stringstyle=\slshape\color{green!40!black},
+%  basicstyle=\ttfamily\small,
+%  language=Python,
+%  morekeywords={*, self},
+%  commentstyle=\slshape\color{black!60},
+%  tabsize=2,
+%}
+%
+%\lstdefinelanguage{Rust}{
+%  sensitive,
+%  morecomment=[l]{//},
+%  morecomment=[s]{/*}{*/},
+%  moredelim=[s][{\itshape\color[rgb]{0,0,0.75}}]{\#[}{]},
+%  morestring=[b]{"},
+%  alsodigit={},
+%  alsoother={},
+%  alsoletter={!},
+%  % keywords
+%  otherkeywords={=>},
+%  morekeywords={break, continue, else, for, if, in, loop, match, return, while},
+%  morekeywords={as, const, let, move, mut, ref, static, unsafe},
+%  morekeywords={dyn, enum, fn, impl, Self, self, struct, trait, type, use, where},
+%  morekeywords={crate, extern, mod, pub, super},
+%  morekeywords={abstract, alignof, become, box, do, final, macro,
+%    offsetof, override, priv, proc, pure, sizeof, typeof, unsized, virtual, yield},
+%  % traits
+%  morekeywords=[2]{Send},
+%  % types
+%  morekeywords=[3]{bool, char, f32, f64, i8, i16, i32, i64, isize, str, u8, u16, u32, u64, unit, usize, i128, u128},
+%}%
 
 \def\mytitle{Program Synthesis for Systems Developers}
 \def\myauthor{Jacob Van Geffen}

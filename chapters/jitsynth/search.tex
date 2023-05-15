@@ -49,7 +49,7 @@ naive sketch, and they are designed to prioritize exploring small parts of the
 search space that are likely to contain a correct \minicompiler for $\iota$, if
 one exists.
 
-\begin{figure}[h]
+\begin{figure}[t]
 \begin{algorithmic}[1] 
   \Function{CMS}
     {$\iota, \arm_S, \arm_T, \Map$} \Comment{$\iota\in\mathcal{I}_S, \arm_S = (\mathcal{I}_S, \ldots)$}
@@ -321,7 +321,7 @@ well as any scratch register. The resulting sketch includes $2^{100}$ programs
 of length $k = 5$ and depth $d\leq 3$, providing a $2^{190}$ fold reduction in
 the size of the search space compared to the \RW sketch.\tighten
 
-\begin{figure}[h]
+\begin{figure}[H]
   \begin{algorithmic}[1] 
     \Function{PLD}
       {$k, d, \iota, \arm_S, \arm_T, \Map$}\Comment{$\iota\in\mathcal{I}_S, \arm_S = (\mathcal{I}_S, \ldots)$}

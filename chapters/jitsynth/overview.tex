@@ -135,8 +135,29 @@ sequence of instructions $e$, starting from the state $\sigma$
 
 We can solve this problem by asking the host synthesizer to search for
 $C_\cc{addi32}$ in a space of candidate \minicompilers of length $k$. We
-describe this space with a syntactic template, or a \emph{sketch}, as shown below:
+describe this space with a syntactic template, or a \emph{sketch}, as shown in \autoref{fig:example-sketch}.
 
+In this sketch, \cc{(??insn dst imm)} stands for a missing expression---a hole---that the
+synthesizer needs to fill with an instruction from the toy RISC-V language. To
+fill an instruction hole, the synthesizer must find an expression that computes
+the value of the target instruction's fields. \jitsynth limits this expression
+language to bitvector expressions (of any depth) over the fields of the source
+instruction and arbitrary bitvector constants.\tighten
+
+Given this sketch, and our correctness specification for $C_\cc{addi32}$, the
+synthesizer will search the space defined by the sketch for a program that
+satisfies the specification.
+%
+Below is an example of the resulting toy compiler from eBPF to
+RISC-V, synthesized and translated to C by \jitsynth (without the
+outer loop):\tighten
+
+\begin{minipage}{\linewidth}
+\lstinputlisting[language=C,xleftmargin=2em,firstline=1]{code/toy-compiler.c}%multicols=2,numbers=left,numbersep=.75em,
+\end{minipage}
+
+\begin{figure}[h]
+%\begin{minipage}{\linewidth}
 \begin{lstlisting}[language=rosette,xleftmargin=0em,mathescape=true]
 (define (compile-addi32 s)       ; Returns a list of k instruction holes, to be 
   (define dst (ebpf-insn-dst s)) ; filled with toy RISC-V instructions. Each    
@@ -152,22 +173,12 @@ describe this space with a syntactic template, or a \emph{sketch}, as shown belo
     ...                                      ; ..., and
     (rv-insn sb  rd rs1 rs2 (??imm 12 sf)))) ; sb instructions.
 \end{lstlisting}
-
-Here, \cc{(??insn dst imm)} stands for a missing expression---a hole---that the
-synthesizer needs to fill with an instruction from the toy RISC-V language. To
-fill an instruction hole, the synthesizer must find an expression that computes
-the value of the target instruction's fields. \jitsynth limits this expression
-language to bitvector expressions (of any depth) over the fields of the source
-instruction and arbitrary bitvector constants.\tighten
-
-Given this sketch, and our correctness specification for $C_\cc{addi32}$, the
-synthesizer will search the space defined by the sketch for a program that
-satisfies the specification.
-%
-Below is an example of the resulting toy compiler from eBPF to
-RISC-V, synthesized and translated to C by \jitsynth (without the
-outer loop):\tighten
-\lstinputlisting[language=C,xleftmargin=2em,firstline=1]{code/toy-compiler.c}%multicols=2,numbers=left,numbersep=.75em,
+%\end{minipage}
+\caption{A fixed-length sketch describing the space of candidate \minicompilers for
+         the eBPF \cc{addi32} instruction. \cc{(??insn dst imm)} describes a missing
+         expression that the synthesizer must fill with a RISC-V instruction.}
+\label{fig:example-sketch}
+\end{figure}
 
 Once we know how to synthesize a compiler of length $k$, we can easily extend
 this solution into a naive method for synthesizing a compiler of any length. We
