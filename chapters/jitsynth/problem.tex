@@ -27,7 +27,7 @@ underlying language. For example, the abstract instruction $(\mathid{addi32}, r
 set of all \emph{concrete instructions} that instantiate the abstract
 instruction's parameters with values of the right type. For example,
 $\cc{addi32}\, 0, 5$ is a concrete instantiation of the abstract instruction for
-\cc{addi32}. In the rest of this paper, we will write ``instruction'' to mean a
+\cc{addi32}. In the rest of this chapter, we will write ``instruction'' to mean a
 concrete instruction.\tighten
 
 \begin{definition}[Abstract and Concrete Instructions]\label{def:instruction}
@@ -139,7 +139,7 @@ machines to determine if a source and target program are semantically
 equivalent. \jitsynth can, in principle, solve this problem with the naive
 metasketch described in \autoref{jitsynth:s:overview}. In practice, however, the naive
 metasketch scales poorly, even on small languages such as toy eBPF and RISC-V\@.
-So, in this paper, we focus on source and target ARMs that satisfy an additional
+So, in this work, we focus on source and target ARMs that satisfy an additional
 assumption on their state equivalence relation: it can be expressed in terms of
 injective mappings from source to target states (\autoref{def:state-equiv}).
 %When we write $\cong$ from now on, we mean this restricted form of state equivalence. 

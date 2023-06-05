@@ -169,7 +169,7 @@ without requiring the developer to manually construct graphs
 or invoke consistency primitives like \texttt{fsync}.
 
 The implementation details of the dependency-aware buffer cache
-are outside the scope of this paper and follow the examples of Featherstitch and ShardStore.
+are outside the scope of this chapter and follow the examples of Featherstitch and ShardStore.
 An implementation could use a variety of consistency and durability primitives provided by disks,
 including force-unit-access writes, cache flush commands, or ordering barriers.
 We trust the correctness of the dependency-aware buffer cache,
@@ -254,7 +254,7 @@ and issues write operations to mutate disk $d$.
 \noindent
 \depsynth requires implementation functions to support being symbolically evaluated
 with respect to a symbolic disk state $d$.
-In this paper, we use Rosette~\cite{torlak:rosette} as our symbolic evaluator;
+In this work, we use Rosette~\cite{torlak:rosette} as our symbolic evaluator;
 this allows implementation functions to be written in Racket
 and automatically lifted to support the necessary symbolic evaluation,
 so long as their executions are deterministic and bounded.

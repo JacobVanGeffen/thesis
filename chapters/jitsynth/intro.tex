@@ -26,7 +26,7 @@ in the kernel; rather, it must be run in user space, sacrificing performance and
 enlarging the trusted computing base (TCB) by relying on the OCaml runtime as
 part of the TCB\@.\tighten
 
-This paper addresses these challenges with \jitsynth, the first tool for
+This chapter addresses these challenges with \jitsynth, the first tool for
 synthesizing verified JIT compilers for in-kernel DSLs. \jitsynth takes as input
 interpreters for the source DSL and the target instruction set architecture
 (ISA), and it synthesizes a JIT compiler that is guaranteed to transform each
@@ -99,7 +99,7 @@ $\CbpfSlowdown$--$\LibseccompSlowdown\times$ slowdown in the performance of the
 generated code.\tighten
 
 
-To summarize, this paper makes the following contributions:
+To summarize, this chapter makes the following contributions:
 \begin{enumerate}
     \item \jitsynth, the first tool for synthesizing verified JIT compilers for
     in-kernel DSLs, given the semantics of the source and target languages as
@@ -113,7 +113,7 @@ To summarize, this paper makes the following contributions:
     synthesize verified JIT compilers for three widely used in-kernel DSLs.
 \end{enumerate}
 
-The rest of this paper is organized as follows.
+The rest of this chapter is organized as follows.
 %
 \autoref{jitsynth:s:overview} illustrates \jitsynth on a small example.
 %

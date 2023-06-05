@@ -12,7 +12,7 @@
 % while some prior work improves this, still fundamentally requires the programmer to determine valid
 % and invalid orderings at the granularity of individual writes.
 
-% this paper: a new programming model for building storage systems in which a program synthesizer automatically
+% this chapter: a new programming model for building storage systems in which a program synthesizer automatically
 % infers the necessary ordering(?) to guarantee crash consistency.
 % two parts:
 % 1. instead of programming directly against a low-level disk API, programmers instead build against
@@ -61,7 +61,7 @@ While prior work offers testing~\cite{mohan:crashmonkey,yang:explode}
 and verification~\cite{chen:fscq,sigurbjarnarson:yggdrasil} tools for validating crash consistency,
 these tools do not alleviate the burden of implementing crash-consistent systems.
 
-This paper presents a new synthesis-aided programming model for building crash-consistent storage systems.
+This chapter presents a new synthesis-aided programming model for building crash-consistent storage systems.
 % that \emph{automatically infers} the necessary write-level orderings to guarantee a desired crash consistency property.
 The programming model consists of three parts: 
 %
@@ -141,7 +141,7 @@ and that \depsynth can be used for storage systems beyond key-value stores.
 % to \emph{re}-synthesize dependency rules
 % after changing the underlying storage hardware (and thus the guarantees it offers).
 
-In summary, this paper makes three contributions:
+In summary, this work makes three contributions:
 \begin{itemize}
 \item A new programming model for building storage systems that automates the implementation of crash consistency guarantees;
 \item \depsynth, a synthesis tool that can infer the dependency rules sufficient for a storage system to be crash consistent; and
@@ -149,7 +149,7 @@ In summary, this paper makes three contributions:
 \end{itemize}
 
 \noindent
-The remainder of this paper is organized as follows.
+The remainder of this chapter is organized as follows.
 \cref{depsynth:s:overview} gives a walk-through of building a simple storage system with \depsynth.
 \cref{sec:problem} defines the \depsynth programming model, including labeled writes and dependency rules.
 \cref{sec:alg} describes the \depsynth synthesis algorithm for inferring dependency rules,
@@ -178,7 +178,7 @@ obeys this set of dependencies.
 Since some orders can be executed more quickly than others, it is desirable to minimize
 write dependencies to only those necessary to ensure crash consistency.
 
-This paper presents a tool for automatically implementing crash consistency through soft updates
+This chapter presents a tool for automatically implementing crash consistency through soft updates
 without requiring the developer to reason about the crash states of their system. We develop
 \depsynth, a framework for synthesizing \textit{dependency rules} that generate write dependencies
 for any execution of the input system. Using \depsynth, we implement a key-value store based
@@ -228,7 +228,7 @@ generate conflicting rules over multiple litmus tests that only cause a cycle wh
 When this happens, \depsynth resolves the conflicts by generating new rules for all
 involved litmus tests.
 
-To summarize, this paper makes the following contributions:
+To summarize, this work makes the following contributions:
 \begin{enumerate}
   \item \depsynth, the first tool for synthesizing crash consistency code for storage systems
         in the form of soft updates.
@@ -238,7 +238,7 @@ To summarize, this paper makes the following contributions:
         to outputs outside the training set and that is comparable to expert-written crash consistency code.
 \end{enumerate}
 
-The rest of this paper is organized as follows.
+The rest of this chapter is organized as follows.
 \autoref{depsynth:s:overview} illustrates how developers use \depsynth to construct a basic crash consistent storage system.
 \autoref{s:problem} formalizes the dependency rule synthesis problem.
 \autoref{s:algorithm} presents the \depsynth algorithm for searching for rules over a set of litmus tests.

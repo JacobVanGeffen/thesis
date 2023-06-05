@@ -127,7 +127,7 @@ The third argument to \lstinline[language=py]{rule}
 is an \emph{epoch predicate} that scopes the rule using the epoch in each label.
 Here, the \lstinline[language=py]{eq} predicate
 restricts the rule to only apply to pairs of writes whose labels have equal epochs.
-% Throughout this paper, we use the notation $\deprule{a}{b}{p}$
+% Throughout this chapter, we use the notation $\deprule{a}{b}{p}$
 % to denote a rule where a write labeled with name $a$ depends on a write labeled with name $b$ under epoch predicate $p$.
 This rule means that superblock updates cannot be persisted on disk
 until a log block write with the same epoch is persisted first,
@@ -363,7 +363,7 @@ because from a users perspective, there is no notification of an error in our sy
 \paragraph{How can we fix this problem?}
 There are several ways that storage systems can ensure the crash consistency of their data.
 Journaling, copy-on-write, and soft updates are among the most popular ways that systems
-implement crash consistency \todo{cite}. In this paper, we focus on implementing crash consistency
+implement crash consistency \todo{cite}. In this chapter, we focus on implementing crash consistency
 with soft updates. Soft updates work by specifying a partial order over disk writes that restricts
 when writes can be committed to disk. FeatherStitch \todo{cite} showed that these restrictions can be
 specified as dependencies or "write-before" relationships between disk writes, where the relationship
